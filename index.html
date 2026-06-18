@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الرابعة - إدارة الاشتراكات</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #0d0f14; --surface: #161920; --surface2: #1e2230; --surface3: #252b3b;
+    --accent: #6c63ff; --accent2: #a78bfa; --green: #22c55e; --red: #ef4444; --orange: #f97316;
+    --whatsapp: #25D366; --text: #e8eaf0; --muted: #8b92a8; --border: #2a3045;
+    --radius: 12px; --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Cairo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  /* HEADER */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); }
+  .header-logo { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 8px; }
+  .header-actions { display: flex; align-items: center; gap: 12px; }
+  .btn-add { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+  .btn-add:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(108,99,255,0.4); }
+  .menu-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); width: 40px; height: 40px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s; position: relative; }
+  .menu-btn:hover { background: var(--surface3); }
+
+  /* DROPDOWN MENU */
+  .dropdown-menu { position: absolute; top: 52px; left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); min-width: 200px; z-index: 200; overflow: hidden; display: none; }
+  .dropdown-menu.open { display: block; animation: fadeIn 0.15s ease; }
+  .dropdown-item { padding: 13px 18px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; transition: background 0.15s; border-bottom: 1px solid var(--border); }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: var(--surface2); }
+  .dropdown-item.active { color: var(--accent2); }
+
+  /* MAIN */
+  .main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 8px; transition: transform 0.2s; }
+  .stat-card:hover { transform: translateY(-2px); }
+  .stat-icon { font-size: 28px; } .stat-value { font-size: 28px; font-weight: 800; } .stat-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .stat-card.green .stat-value { color: var(--green); } .stat-card.red .stat-value { color: var(--red); } .stat-card.accent .stat-value { color: var(--accent2); } .stat-card.orange .stat-value { color: var(--orange); }
+
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+  .page-title { font-size: 18px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .badge { background: var(--surface3); color: var(--muted); padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .search-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-family: 'Cairo', sans-serif; color: var(--text); font-size: 14px; width: 240px; transition: border-color 0.2s; }
+  .search-bar:focus { outline: none; border-color: var(--accent); }
+
+  /* TABLE */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 800px; }
+  thead tr { background: var(--surface2); border-bottom: 1px solid var(--border); }
+  th { padding: 14px 16px; text-align: right; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+  td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr { transition: background 0.15s; cursor: pointer; } tbody tr:hover { background: var(--surface2); }
+  .customer-name { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .plan-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; background: rgba(108,99,255,0.15); color: var(--accent2); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+  .status-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); } .status-dot.expired { background: var(--red); } .status-dot.soon { background: var(--orange); box-shadow: 0 0 6px var(--orange); }
+  .time-remaining { font-size: 13px; font-weight: 600; } .time-remaining.expired { color: var(--red); } .time-remaining.soon { color: var(--orange); } .time-remaining.ok { color: var(--green); }
+  .action-btns { display: flex; gap: 6px; }
+  .btn-icon { width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 15px; transition: all 0.2s; }
+  .btn-icon:hover { background: var(--surface3); color: var(--text); } .btn-icon.danger:hover { background: rgba(239,68,68,0.15); color: var(--red); border-color: var(--red); } .btn-icon.success:hover { background: rgba(34,197,94,0.15); color: var(--green); border-color: var(--green); }
+  .debt-badge { font-size: 12px; font-weight: 700; color: var(--red); background: rgba(239,68,68,0.1); padding: 3px 8px; border-radius: 5px; }
+  .paid-badge { font-size: 12px; font-weight: 700; color: var(--green); background: rgba(34,197,94,0.1); padding: 3px 8px; border-radius: 5px; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow); animation: slideUp 0.25s ease; }
+  .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-size: 18px; font-weight: 700; }
+  .modal-close { width: 32px; height: 32px; border-radius: 6px; background: var(--surface2); border: none; color: var(--muted); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .modal-close:hover { background: var(--surface3); color: var(--text); }
+  .modal-body { padding: 24px; }
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; }
+  .form-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-family: 'Cairo', sans-serif; font-size: 14px; transition: border-color 0.2s; }
+  .form-input:focus { outline: none; border-color: var(--accent); }
+  
+  .plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .plan-option { background: var(--surface2); border: 2px solid var(--border); border-radius: 10px; padding: 14px; cursor: pointer; text-align: center; transition: all 0.2s; }
+  .plan-option:hover { border-color: var(--accent); } .plan-option.selected { border-color: var(--accent); background: rgba(108,99,255,0.1); }
+  .plan-option .plan-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; } .plan-option .plan-price { font-size: 15px; font-weight: 800; color: var(--accent2); }
+  .date-options { display: flex; gap: 10px; margin-bottom: 14px; }
+  .date-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 600; text-align: center; }
+  .date-btn.active { border-color: var(--accent); color: var(--accent2); background: rgba(108,99,255,0.1); }
+  .form-footer { padding: 20px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+  .btn { padding: 11px 22px; border-radius: 8px; border: none; font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; } .btn-secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); } .btn-danger { background: rgba(239,68,68,0.15); border: 1px solid var(--red); color: var(--red); }
+  .btn-whatsapp { background: rgba(37, 211, 102, 0.15); border: 1px solid var(--whatsapp); color: var(--whatsapp); }
+
+  /* DETAILS */
+  .detail-header { background: linear-gradient(135deg, var(--accent), var(--accent2)); padding: 28px 24px; text-align: center; border-radius: 16px 16px 0 0; }
+  .detail-avatar { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; margin: 0 auto 12px; border: 3px solid rgba(255,255,255,0.4); }
+  .detail-name { font-size: 20px; font-weight: 800; color: #fff; } .detail-phone { font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 4px; }
+  .detail-status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 10px; }
+  .detail-status-pill.active { background: rgba(34,197,94,0.2); color: #86efac; border: 1px solid rgba(34,197,94,0.3); } .detail-status-pill.expired { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 20px 24px; }
+  .detail-item { background: var(--surface2); border-radius: 10px; padding: 14px; border: 1px solid var(--border); }
+  .detail-item .di-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 4px; } .detail-item .di-value { font-size: 16px; font-weight: 700; }
+  .qr-section { padding: 0 24px 20px; text-align: center; } .qr-img { width: 150px; height: 150px; border-radius: 12px; object-fit: contain; background: #fff; padding: 8px; margin: 0 auto; display: block; border: 2px solid var(--border); }
+  .sub-history { padding: 0 24px 24px; } .sub-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+  .upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; position: relative; } .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; } .upload-zone .preview { max-width: 100px; max-height: 100px; border-radius: 8px; margin: 8px auto 0; display: none; }
+  .date-box { flex: 1; text-align: center; -moz-appearance: textfield; } .date-box::-webkit-inner-spin-button, .date-box::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* SETTINGS */
+  .settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+  .settings-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .price-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); } .price-row:last-child { border-bottom: none; }
+  .price-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 700; width: 120px; text-align: center; }
+  .toggle { width: 44px; height: 24px; border-radius: 12px; background: var(--surface3); border: none; cursor: pointer; position: relative; } .toggle::after { content: ''; width: 18px; height: 18px; background: var(--muted); border-radius: 50%; position: absolute; top: 3px; right: 3px; transition: all 0.2s; } .toggle.on { background: var(--green); } .toggle.on::after { right: calc(100% - 21px); background: #fff; }
+  
+  /* TOAST & UTILS */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow); animation: slideInRight 0.3s ease; max-width: 320px; }
+  .toast.success { border-color: var(--green); color: var(--green); } .toast.error { border-color: var(--red); color: var(--red); }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); } .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; } .empty-state .es-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  .debt-row { background: var(--surface2); border-radius: 10px; padding: 16px; margin-bottom: 10px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; cursor: pointer; } .debt-row:hover { border-color: var(--orange); transform: translateX(-2px); }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } } @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  ::-webkit-scrollbar { width: 6px; height: 6px;} ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+  .hidden { display: none !important; } .page { display: none; } .page.active { display: block; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">
+    <svg width="28" height="28" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="48" fill="#fff" stroke="#d4af37" stroke-width="3"/>
+      <circle cx="50" cy="50" r="42" fill="#003087"/>
+      <path d="M50 8 L53 20 L65 20 L55 28 L59 40 L50 32 L41 40 L45 28 L35 20 L47 20 Z" fill="#d4af37"/>
+      <text x="50" y="70" text-anchor="middle" font-family="serif" font-size="22" font-weight="bold" fill="#d4af37">RM</text>
+    </svg>
+    الرابعة
+  </div>
+  <div class="header-actions">
+    <button class="btn-add" onclick="openAddCustomer()">＋ زبون جديد</button>
+    <div style="position:relative">
+      <button class="menu-btn" onclick="toggleMenu()" id="menuBtn">⋮</button>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <div class="dropdown-item active" onclick="showPage('home')" id="nav-home"><span class="di">🏠</span> الرئيسية</div>
+        <div class="dropdown-item" onclick="showPage('active')" id="nav-active"><span class="di">✅</span> المستمرة</div>
+        <div class="dropdown-item" onclick="showPage('expired')" id="nav-expired"><span class="di">❌</span> المنتهية</div>
+        <div class="dropdown-item" onclick="showPage('debt')" id="nav-debt"><span class="di">💰</span> الديون</div>
+        <div class="dropdown-item" onclick="showPage('stats')" id="nav-stats"><span class="di">📊</span> الإحصائيات</div>
+        <div class="dropdown-item" onclick="showPage('balance')" id="nav-balance"><span class="di">💳</span> إدارة الرصيد</div>
+        <div class="dropdown-item" onclick="showPage('settings')" id="nav-settings"><span class="di">⚙️</span> الإعدادات</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <div class="page active" id="page-home">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="homeTotalCust">0</div><div class="stat-label">إجمالي الزبائن</div></div>
+      <div class="stat-card accent"><div class="stat-icon">💳</div><div class="stat-value" id="homeBalance">0</div><div class="stat-label">رصيد الوكالة المتبقي (IQD)</div></div>
+      <div class="stat-card green"><div class="stat-icon">💵</div><div class="stat-value" id="homeMonthRev">0</div><div class="stat-label">إيرادات هذا الشهر</div></div>
+      <div class="stat-card orange"><div class="stat-icon">💸</div><div class="stat-value" id="homeMonthDebt">0</div><div class="stat-label">ديون هذا الشهر</div></div>
+    </div>
+    <div class="page-header">
+      <div class="page-title">📋 كل الزبائن</div>
+      <input class="search-bar" type="text" placeholder="🔍 بحث بالاسم أو الرقم..." oninput="filterTable(this.value, 'homeTable')">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>الزبون</th><th>الاشتراك</th><th>يبدأ</th><th>ينتهي</th><th>الوقت المتبقي</th><th>الحساب</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+        <tbody id="homeTable"></tbody>
+      </table>
+      <div class="empty-state hidden" id="homeEmpty"><div class="es-icon">👤</div><div class="es-title">لا يوجد زبائن</div></div>
+    </div>
+    <div id="homePagination"></div>
+  </div>
+
+  <div class="page" id="page-active">
+    <div class="page-header"><div class="page-title">✅ الاشتراكات المستمرة <span class="badge green" id="activeBadge">0</span></div><input class="search-bar" type="text" placeholder="🔍 بحث..." oninput="filterTable(this.value, 'activeTable')"></div>
+    <div class="table-wrap"><table><thead><tr><th>الزبون</th><th>الاشتراك</th><th>ينتهي</th><th>الوقت المتبقي</th><th>الحساب</th><th>إجراءات</th></tr></thead><tbody id="activeTable"></tbody></table><div class="empty-state hidden" id="activeEmpty"><div class="es-title">لا يوجد اشتراكات مستمرة</div></div></div>
+    <div id="activePagination"></div>
+  </div>
+
+  <div class="page" id="page-expired">
+    <div class="page-header"><div class="page-title">❌ الاشتراكات المنتهية <span class="badge red" id="expiredBadge">0</span></div><input class="search-bar" type="text" placeholder="🔍 بحث..." oninput="filterTable(this.value, 'expiredTable')"></div>
+    <div class="table-wrap"><table><thead><tr><th>الزبون</th><th>الاشتراك</th><th>ينتهي</th><th>صار عليه</th><th>الحساب</th><th>إجراءات</th></tr></thead><tbody id="expiredTable"></tbody></table><div class="empty-state hidden" id="expiredEmpty"><div class="es-title">ما في اشتراكات منتهية</div></div></div>
+    <div id="expiredPagination"></div>
+  </div>
+
+  <div class="page" id="page-debt">
+    <div class="page-header"><div class="page-title">💰 الديون <span class="badge" id="debtBadge">0</span></div><input class="search-bar" type="text" placeholder="🔍 بحث..." oninput="filterDivList(this.value, 'debtList')"></div>
+    <div id="debtList"></div><div class="empty-state hidden" id="debtEmpty"><div class="es-icon">💚</div><div class="es-title">ما في ديون</div></div>
+  </div>
+
+  <div class="page" id="page-stats">
+    <div class="page-header"><div class="page-title">📊 الإحصائيات</div><select class="search-bar" id="statsMonthSelect" onchange="loadMonthlyStats(this.value)"></select></div>
+    <div class="stats-grid" style="margin-bottom:24px">
+      <div class="stat-card green"><div class="stat-icon">💵</div><div class="stat-value" id="statsRevenue">0</div><div class="stat-label">المحصّل (IQD)</div></div>
+      <div class="stat-card accent"><div class="stat-icon">📋</div><div class="stat-value" id="statsTotalPrice">0</div><div class="stat-label">الإجمالي (IQD)</div></div>
+      <div class="stat-card orange"><div class="stat-icon">💸</div><div class="stat-value" id="statsDebt">0</div><div class="stat-label">الديون (IQD)</div></div>
+      <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="statsCount">0</div><div class="stat-label">عدد العمليات</div></div>
+    </div>
+    <div class="page-header"><div class="page-title">📋 تفصيل حسب الباقة <span style="font-size:12px;color:var(--muted)">(اضغط على الباقة لعرض المشتركين)</span></div></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>الباقة</th><th>العدد</th><th>المحصّل</th><th>الإجمالي</th><th>الباقي</th></tr></thead><tbody id="statsByPlanTable"></tbody></table>
+      <div class="empty-state hidden" id="statsEmpty"><div class="es-icon">📭</div><div class="es-title">لا توجد بيانات</div></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-balance">
+    <div class="settings-section">
+      <div class="settings-title">💳 إضافة رصيد للوكالة</div>
+      <div style="display:flex; gap:10px; align-items:center">
+        <input type="number" id="recharge_amount" class="form-input" placeholder="المبلغ (مثال: 100000)" style="max-width:300px">
+        <button class="btn btn-primary" onclick="submitRecharge()">➕ تعبئة الرصيد</button>
+      </div>
+      <div style="margin-top:10px; font-size:13px; color:var(--muted)">سيتم خصم (الكلفة) من هذا الرصيد عند تفعيل أي اشتراك جديد.</div>
+    </div>
+    <div class="page-header"><div class="page-title">📜 سجل تعبئة الرصيد</div></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>رقم العملية</th><th>المبلغ المضاف (IQD)</th><th>التاريخ والوقت</th></tr></thead><tbody id="rechargeTable"></tbody></table>
+    </div>
+  </div>
+
+  <div class="page" id="page-settings">
+    <div class="settings-section">
+      <div class="settings-title">💰 أسعار الاشتراكات (البيع والكلفة)</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">حدد "سعر البيع" للزبون، وحدد "سعر الكلفة" اللي راح تنقص من رصيدك الأساسي.</p>
+      
+      <div class="price-row" style="background:var(--surface2); padding:10px; border-radius:8px; margin-bottom:8px">
+        <div class="price-row-label">🗓️ شهري</div>
+        <div style="display:flex; gap:10px; align-items:center">
+          <div><label style="font-size:11px;color:var(--muted)">سعر البيع</label><input class="price-input" type="number" id="price_monthly" value="25000"></div>
+          <div><label style="font-size:11px;color:var(--muted)">كلفة الوكالة</label><input class="price-input" type="number" id="cost_monthly" value="20000" style="border-color:var(--orange)"></div>
+          <button class="toggle on" id="toggle_monthly" onclick="togglePlan('monthly')" style="margin-top:18px"></button>
+        </div>
+      </div>
+
+      <div class="price-row" style="background:var(--surface2); padding:10px; border-radius:8px; margin-bottom:8px">
+        <div class="price-row-label">📅 3 أشهر</div>
+        <div style="display:flex; gap:10px; align-items:center">
+          <div><label style="font-size:11px;color:var(--muted)">سعر البيع</label><input class="price-input" type="number" id="price_3months" value="60000"></div>
+          <div><label style="font-size:11px;color:var(--muted)">كلفة الوكالة</label><input class="price-input" type="number" id="cost_3months" value="50000" style="border-color:var(--orange)"></div>
+          <button class="toggle on" id="toggle_3months" onclick="togglePlan('3months')" style="margin-top:18px"></button>
+        </div>
+      </div>
+
+      <div class="price-row" style="background:var(--surface2); padding:10px; border-radius:8px; margin-bottom:8px">
+        <div class="price-row-label">📆 6 أشهر</div>
+        <div style="display:flex; gap:10px; align-items:center">
+          <div><label style="font-size:11px;color:var(--muted)">سعر البيع</label><input class="price-input" type="number" id="price_6months" value="110000"></div>
+          <div><label style="font-size:11px;color:var(--muted)">كلفة الوكالة</label><input class="price-input" type="number" id="cost_6months" value="90000" style="border-color:var(--orange)"></div>
+          <button class="toggle on" id="toggle_6months" onclick="togglePlan('6months')" style="margin-top:18px"></button>
+        </div>
+      </div>
+
+      <div class="price-row" style="background:var(--surface2); padding:10px; border-radius:8px; margin-bottom:8px">
+        <div class="price-row-label">🗓️ سنوي</div>
+        <div style="display:flex; gap:10px; align-items:center">
+          <div><label style="font-size:11px;color:var(--muted)">سعر البيع</label><input class="price-input" type="number" id="price_yearly" value="200000"></div>
+          <div><label style="font-size:11px;color:var(--muted)">كلفة الوكالة</label><input class="price-input" type="number" id="cost_yearly" value="160000" style="border-color:var(--orange)"></div>
+          <button class="toggle on" id="toggle_yearly" onclick="togglePlan('yearly')" style="margin-top:18px"></button>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; display:flex; justify-content:flex-end"><button class="btn btn-primary" onclick="saveSettings()">💾 حفظ الأسعار</button></div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-title">📱 إعدادات التلغرام</div>
+      <div class="form-group"><label class="form-label">Bot Token</label><input class="form-input" type="text" id="set_telegram_token" style="direction:ltr"></div>
+      <div class="form-group"><label class="form-label">Chat ID</label><input class="form-input" type="text" id="set_telegram_chat_id" style="direction:ltr"></div>
+      <div style="display:flex; justify-content:flex-end"><button class="btn btn-primary" onclick="saveTelegramSettings()">💾 حفظ</button></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-title">💾 النسخ الاحتياطي (قاعدة البيانات كاملة)</div>
+      <div style="display:flex; gap: 10px; justify-content:flex-end">
+        <input type="file" id="backup_file" accept=".db" style="display:none" onchange="restoreBackup(this)">
+        <button class="btn btn-secondary" onclick="document.getElementById('backup_file').click()">⬆️ استرجاع</button>
+        <button class="btn btn-primary" onclick="downloadBackup()">⬇️ تنزيل نسخة (.db)</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="modal-overlay" id="addModal"><div class="modal"><div class="modal-header"><div class="modal-title">➕ زبون جديد</div><button class="modal-close" onclick="closeModal('addModal')">✕</button></div><div class="modal-body"><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" type="text" id="add_name"></div><div class="form-group"><label class="form-label">الهاتف</label><input class="form-input" type="text" id="add_phone" style="direction:ltr"></div><div class="form-group"><div class="upload-zone" onclick="document.getElementById('add_qr').click()"><input type="file" id="add_qr" accept="image/*" onchange="previewQR(this, 'add_preview')" style="display:none"><div class="up-icon">📷</div><img id="add_preview" class="preview"></div></div><div class="form-group"><label class="form-label">الاشتراك</label><div class="plan-grid" id="planGrid"></div></div><div class="form-group"><div class="date-options"><button class="date-btn active" id="dateBtn_today" onclick="setDateMode('today')">من اليوم</button><button class="date-btn" id="dateBtn_manual" onclick="setDateMode('manual')">يدوي</button></div><div id="add_date_boxes" style="display:none;flex-direction:row-reverse;gap:8px"><input class="form-input date-box" type="number" id="add_day" placeholder="يوم"><input class="form-input date-box" type="number" id="add_month" placeholder="شهر"><input class="form-input date-box" type="number" id="add_year" placeholder="سنة"></div></div><div class="form-group"><label class="form-label">المدفوع (IQD)</label><input class="form-input" type="number" id="add_paid" oninput="updateRemaining(this.value,'add')"><div id="add_price_hint" style="margin-top:6px;font-size:12px"></div></div></div><div class="form-footer"><button class="btn btn-secondary" onclick="closeModal('addModal')">إلغاء</button><button class="btn btn-primary" onclick="submitAddCustomer()">إضافة</button></div></div></div>
+<div class="modal-overlay" id="renewModal"><div class="modal"><div class="modal-header"><div class="modal-title">🔄 تجديد</div><button class="modal-close" onclick="closeModal('renewModal')">✕</button></div><div class="modal-body"><div id="renew_customer_name" style="background:var(--surface2);padding:14px;border-radius:10px;margin-bottom:18px;font-weight:bold"></div><input type="hidden" id="renew_customer_id"><div class="form-group"><label class="form-label">الاشتراك</label><div class="plan-grid" id="renewPlanGrid"></div></div><div class="form-group"><div class="date-options"><button class="date-btn active" id="renewDateBtn_today" onclick="setRenewDateMode('today')">من اليوم</button><button class="date-btn" id="renewDateBtn_manual" onclick="setRenewDateMode('manual')">يدوي</button></div><div id="renew_date_boxes" style="display:none;flex-direction:row-reverse;gap:8px"><input class="form-input date-box" type="number" id="renew_day" placeholder="يوم"><input class="form-input date-box" type="number" id="renew_month" placeholder="شهر"><input class="form-input date-box" type="number" id="renew_year" placeholder="سنة"></div></div><div class="form-group"><label class="form-label">المدفوع (IQD)</label><input class="form-input" type="number" id="renew_paid" oninput="updateRemaining(this.value,'renew')"><div id="renew_price_hint" style="margin-top:6px;font-size:12px"></div></div></div><div class="form-footer"><button class="btn btn-secondary" onclick="closeModal('renewModal')">إلغاء</button><button class="btn btn-primary" onclick="submitRenew()">تجديد</button></div></div></div>
+<div class="modal-overlay" id="detailModal"><div class="modal" style="max-width:480px"><button class="modal-close" style="position:absolute;top:12px;left:12px;z-index:10" onclick="closeModal('detailModal')">✕</button><div id="detailContent"></div></div></div>
+<div class="modal-overlay" id="deleteModal"><div class="modal" style="max-width:400px"><div class="modal-header"><div class="modal-title">🗑️ حذف</div><button class="modal-close" onclick="closeModal('deleteModal')">✕</button></div><div class="modal-body"><p>حذف الزبون <strong id="deleteCustomerName"></strong> نهائياً؟</p></div><div class="form-footer"><button class="btn btn-danger" onclick="confirmDelete()">حذف</button></div></div></div>
+<div class="modal-overlay" id="editCustomerModal"><div class="modal"><div class="modal-header"><div class="modal-title">✏️ تعديل الزبون</div><button class="modal-close" onclick="closeModal('editCustomerModal')">✕</button></div><div class="modal-body"><input type="hidden" id="edit_customer_id"><div class="form-group"><label class="form-label">الاسم</label><input class="form-input" type="text" id="edit_name"></div><div class="form-group"><label class="form-label">الهاتف</label><input class="form-input" type="text" id="edit_phone" style="direction:ltr"></div><div class="form-group"><div class="upload-zone" onclick="document.getElementById('edit_qr').click()"><input type="file" id="edit_qr" accept="image/*" onchange="previewQR(this, 'edit_preview')" style="display:none"><div class="up-icon">📷</div><img id="edit_preview" class="preview"></div></div></div><div class="form-footer"><button class="btn btn-primary" onclick="submitEditCustomer()">حفظ</button></div></div></div>
+<div class="modal-overlay" id="editSubModal"><div class="modal"><div class="modal-header"><div class="modal-title">✏️ تعديل الاشتراك</div><button class="modal-close" onclick="closeModal('editSubModal')">✕</button></div><div class="modal-body"><input type="hidden" id="editsub_id"><input type="hidden" id="editsub_customer_id"><div class="form-group"><div class="plan-grid" id="editSubPlanGrid"></div></div><div class="form-group"><div id="editsub_date_boxes" style="display:flex;flex-direction:row-reverse;gap:8px"><input class="form-input date-box" type="number" id="editsub_day"><input class="form-input date-box" type="number" id="editsub_month"><input class="form-input date-box" type="number" id="editsub_year"></div></div><div class="form-group"><label class="form-label">المدفوع</label><input class="form-input" type="number" id="editsub_paid" oninput="updateRemaining(this.value,'editsub')"><div id="editsub_price_hint" style="margin-top:6px;font-size:12px"></div></div></div><div class="form-footer"><button class="btn btn-primary" onclick="submitEditSub()">حفظ</button></div></div></div>
+<div class="modal-overlay" id="deleteSubModal"><div class="modal" style="max-width:400px"><div class="modal-header"><div class="modal-title">🗑️ حذف الاشتراك</div><button class="modal-close" onclick="closeModal('deleteSubModal')">✕</button></div><div class="form-footer"><button class="btn btn-danger" onclick="confirmDeleteSub()">حذف</button></div></div></div>
+
+<div class="modal-overlay" id="planDetailsModal">
+  <div class="modal" style="max-width:650px">
+    <div class="modal-header">
+      <div class="modal-title" id="planDetailsTitle">👥 مشتركي الباقة</div>
+      <button class="modal-close" onclick="closeModal('planDetailsModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="table-wrap" style="border-radius:0; border:none; max-height:400px; overflow-y:auto">
+        <table>
+          <thead><tr><th>الاسم</th><th>الهاتف</th><th>المدفوع</th><th>البداية</th><th>النهاية</th></tr></thead>
+          <tbody id="planDetailsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let allCustomers = [], selectedPlan = '', selectedRenewPlan = '', selectedEditSubPlan = '';
+let dateMode = 'today', renewDateMode = 'today';
+let deleteTargetId = null, deleteSubTarget = null;
+let settingsData = {};
+
+const PLAN_LABELS = { monthly:'شهري', '3months':'3 أشهر', '6months':'6 أشهر', yearly:'سنوي' };
+const PAGE_SIZE = 15; let pageState = { home: 1, active: 1, expired: 1 }; let dataState = { home: [], active: [], expired: [] };
+
+async function init() {
+  await loadSettings(); await loadData(); await loadRecharges();
+  renderPlanGrid('planGrid', 'add'); renderPlanGrid('renewPlanGrid', 'renew');
+}
+
+async function loadSettings() {
+  const res = await fetch('/api/settings'); settingsData = await res.json();
+  ['monthly','3months','6months','yearly'].forEach(p => {
+    document.getElementById(`price_${p}`).value = settingsData[`price_${p}`] || 0;
+    document.getElementById(`cost_${p}`).value = settingsData[`cost_${p}`] || 0;
+    const btn = document.getElementById('toggle_' + p);
+    if (btn) btn.className = 'toggle' + (settingsData['plan_' + p + '_active'] !== '0' ? ' on' : '');
+  });
+  document.getElementById('set_telegram_token').value = settingsData.telegram_token || '';
+  document.getElementById('set_telegram_chat_id').value = settingsData.telegram_chat_id || '';
+}
+
+async function loadData() {
+  const res = await fetch('/api/customers'); allCustomers = await res.json();
+  renderAll(); loadStats();
+}
+
+function renderAll() {
+  dataState.home = allCustomers;
+  dataState.active = allCustomers.filter(c => c.is_active == 1 && c.end_date && !isExpired(c.end_date));
+  dataState.expired = allCustomers.filter(c => c.is_active == 1 && c.end_date && isExpired(c.end_date));
+  pageState.home = 1; pageState.active = 1; pageState.expired = 1;
+  renderHomeTable(dataState.home); renderActiveTable(dataState.active); renderExpiredTable(dataState.expired);
+  renderDebtPage(allCustomers.filter(c => c.paid < c.price && c.price > 0));
+}
+
+function filterTable(val, tableId) {
+  const keyMap = { homeTable: 'home', activeTable: 'active', expiredTable: 'expired' }; const key = keyMap[tableId]; if (!key) return;
+  let source = key==='home'?allCustomers:key==='active'?allCustomers.filter(c=>c.is_active==1&&!isExpired(c.end_date)):allCustomers.filter(c=>c.is_active==1&&isExpired(c.end_date));
+  const filtered = source.filter(c => c.name.includes(val) || (c.phone||'').includes(val));
+  dataState[key] = filtered; pageState[key] = 1;
+  if(key==='home') renderHomeTable(filtered); else if(key==='active') renderActiveTable(filtered); else renderExpiredTable(filtered);
+}
+
+function paginationHtml(total, key) {
+  const totalPages = Math.ceil(total / PAGE_SIZE); if (totalPages <= 1) return ''; const current = pageState[key];
+  return `<div style="display:flex;justify-content:center;gap:8px;padding:14px;border-top:1px solid var(--border)"><button class="btn-icon" ${current<=1?'disabled style="opacity:0.4"':''} onclick="changePage('${key}',${current-1})">›</button><span style="font-size:13px;color:var(--muted)">صفحة ${current} من ${totalPages}</span><button class="btn-icon" ${current>=totalPages?'disabled style="opacity:0.4"':''} onclick="changePage('${key}',${current+1})">‹</button></div>`;
+}
+function changePage(key, page) { pageState[key] = page; if(key==='home') renderHomeTable(dataState.home); else if(key==='active') renderActiveTable(dataState.active); else renderExpiredTable(dataState.expired); }
+
+function isExpired(endDate) { return endDate && new Date(endDate) < new Date(); }
+function timeRemaining(endDate) {
+  if (!endDate) return { text: '—', cls: '' }; const diffMs = new Date(endDate) - new Date();
+  if (diffMs <= 0) return { text: `منذ ${Math.abs(Math.floor(diffMs / 86400000))} يوم`, cls: 'expired' };
+  const days = Math.floor(diffMs / 86400000), hours = Math.floor((diffMs % 86400000) / 3600000);
+  return { text: `${days} يوم و${hours} ساعة`, cls: days <= 3 ? 'soon' : 'ok' };
+}
+function accountBadge(paid, price) { if (!price) return ''; return (price-paid) <= 0 ? `<span class="paid-badge">✅ كامل</span>` : `<span class="debt-badge">💸 باقي ${(price-paid).toLocaleString()}</span>`; }
+
+function rowHtml(c, cols) {
+  const t = timeRemaining(c.end_date); const dot = !c.end_date ? '' : `<span class="status-dot ${isExpired(c.end_date) ? 'expired' : (t.cls === 'soon' ? 'soon' : 'active')}"></span>`;
+  const cells = {
+    customer: `<td><div class="customer-name"><div class="avatar">${c.name.trim()[0]||'؟'}</div>${c.name}</div></td>`,
+    plan: `<td><span class="plan-badge">${PLAN_LABELS[c.plan] || '—'}</span></td>`,
+    start: `<td style="color:var(--muted);font-size:13px">${c.start_date || '—'}</td>`,
+    end: `<td style="color:var(--muted);font-size:13px">${c.end_date || '—'}</td>`,
+    time: `<td><span class="time-remaining ${t.cls}">${dot}${t.text}</span></td>`,
+    account: `<td>${accountBadge(c.paid, c.price)}</td>`,
+    status: `<td><span style="font-size:13px;color:${c.is_active==1&&!isExpired(c.end_date)?'var(--green)':'var(--red)'}">${c.is_active==1&&!isExpired(c.end_date)?'فعّال':'منتهي'}</span></td>`,
+    actions: `<td><div class="action-btns"><button class="btn-icon" title="تجديد" onclick="event.stopPropagation();openRenew(${c.id},'${c.name}')">🔄</button><button class="btn-icon danger" onclick="event.stopPropagation();openDelete(${c.id},'${c.name}')">🗑️</button></div></td>`,
+    expiredDays: `<td style="color:var(--red);font-size:13px">${c.end_date?Math.abs(Math.floor((new Date(c.end_date)-new Date())/86400000))+' يوم':'—'}</td>`,
+  };
+  return `<tr onclick="openDetail(${c.id})">${cols.map(col => cells[col]).join('')}</tr>`;
+}
+
+function renderHomeTable(data) { const tbody=document.getElementById('homeTable'), empty=document.getElementById('homeEmpty'), pg=document.getElementById('homePagination'); if(!data.length){tbody.innerHTML='';empty.classList.remove('hidden');pg.innerHTML='';return;} empty.classList.add('hidden'); const start=(pageState.home-1)*PAGE_SIZE; tbody.innerHTML=data.slice(start,start+PAGE_SIZE).map(c=>rowHtml(c,['customer','plan','start','end','time','account','status','actions'])).join(''); pg.innerHTML=paginationHtml(data.length,'home'); }
+function renderActiveTable(data) { const tbody=document.getElementById('activeTable'), empty=document.getElementById('activeEmpty'), pg=document.getElementById('activePagination'); if(!data.length){tbody.innerHTML='';empty.classList.remove('hidden');pg.innerHTML='';return;} empty.classList.add('hidden'); const start=(pageState.active-1)*PAGE_SIZE; tbody.innerHTML=data.slice(start,start+PAGE_SIZE).map(c=>rowHtml(c,['customer','plan','end','time','account','actions'])).join(''); pg.innerHTML=paginationHtml(data.length,'active'); }
+function renderExpiredTable(data) { const tbody=document.getElementById('expiredTable'), empty=document.getElementById('expiredEmpty'), pg=document.getElementById('expiredPagination'); if(!data.length){tbody.innerHTML='';empty.classList.remove('hidden');pg.innerHTML='';return;} empty.classList.add('hidden'); const start=(pageState.expired-1)*PAGE_SIZE; tbody.innerHTML=data.slice(start,start+PAGE_SIZE).map(c=>rowHtml(c,['customer','plan','end','expiredDays','account','actions'])).join(''); pg.innerHTML=paginationHtml(data.length,'expired'); }
+function renderDebtPage(data) { const list=document.getElementById('debtList'), empty=document.getElementById('debtEmpty'); if(!data.length){list.innerHTML='';empty.classList.remove('hidden');return;} empty.classList.add('hidden'); list.innerHTML=data.map(c=>`<div class="debt-row" onclick="openDetail(${c.id})"><div><div class="dr-name">${c.name}</div><div class="dr-plan">${PLAN_LABELS[c.plan]||'—'} | دفع: ${Number(c.paid||0).toLocaleString()}</div></div><div class="dr-amount">💸 ${(c.price-c.paid).toLocaleString()}</div></div>`).join(''); }
+
+function shareWhatsApp(name, phone, plan, paid, price, startDate, endDate) {
+  if(!phone) return toast('لا يوجد رقم هاتف', 'error');
+  const rem = price - paid;
+  let text = `مرحباً ${name}،\nتم تفعيل اشتراكك (الرابعة - ${plan}) بنجاح ✅\n\n📅 تاريخ التفعيل: ${startDate}\n⏳ تاريخ الانتهاء: ${endDate}\n\n`;
+  if (rem > 0) {
+    const masterAmount = rem + 1000;
+    text += `💰 المبلغ المدفوع: ${paid.toLocaleString()} دينار\n💸 المبلغ المتبقي: ${rem.toLocaleString()} دينار\n\nيرجى تحويل المبلغ الباقي عن طريق زيارة (مكتب جاسم ستلايت) 📍\nأو التحويل عن طريق رقم الماستر: 1957161704 💳\n(ملاحظة: مبلغ الماستر ${masterAmount.toLocaleString()} دينار، متضمن 1,000 دينار نفقات تحويل).`;
+  } else {
+    text += `💰 المبلغ المدفوع: ${paid.toLocaleString()} دينار\n✅ الحساب واصل بالكامل، مشاهدة ممتعة! 📺`;
+  }
+  let waPhone = phone; if (waPhone.startsWith('0')) waPhone = '+964' + waPhone.substring(1);
+  window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+async function openDetail(id) {
+  const res = await fetch(`/api/customers/${id}`); const c = await res.json(); const isActive = c.latestSub?.is_active == 1 && !isExpired(c.latestSub?.end_date);
+  let cdHtml = ''; if (c.timeInfo && !c.timeInfo.expired) cdHtml = `<div class="countdown-box" style="margin:0 24px 16px"><div class="countdown-value">${c.timeInfo.days}</div><div class="countdown-label">يوم متبقي</div></div>`; else if (c.timeInfo?.expired) cdHtml = `<div class="countdown-box" style="margin:0 24px 16px;border-color:var(--red);background:rgba(239,68,68,0.05)"><div class="countdown-value" style="color:var(--red)">${c.timeInfo.expiredDays}</div><div class="countdown-label" style="color:var(--red)">يوم منذ الانتهاء</div></div>`;
+  const qrHtml = c.qr_image ? `<div class="qr-section"><img src="${c.qr_image}" class="qr-img"></div>` : '';
+  const subHistory = c.subscriptions.slice(0,8).map(s => `<div class="sub-item"><div><span class="plan-badge">${PLAN_LABELS[s.plan]||s.plan}</span> <span style="color:var(--muted);font-size:12px">${s.start_date} → ${s.end_date}</span></div><div style="display:flex;gap:8px;align-items:center"><span style="color:${s.paid>=s.price?'var(--green)':'var(--orange)'};font-weight:700">${Number(s.paid||0).toLocaleString()} / ${Number(s.price||0).toLocaleString()}</span><button class="btn-icon" style="width:26px;height:26px;font-size:12px" onclick="openEditSub(${s.id},${c.id},'${s.plan}',${s.price},${s.paid},'${s.start_date}')">✏️</button><button class="btn-icon danger" style="width:26px;height:26px;font-size:12px" onclick="openDeleteSub(${s.id},${c.id})">🗑️</button></div></div>`).join('');
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-header"><div class="detail-avatar">${c.name.trim()[0]||'؟'}</div><div class="detail-name">${c.name}</div>${c.phone ? `<div class="detail-phone">📱 ${c.phone}</div>`:''}<div class="detail-status-pill ${isActive?'active':'expired'}">${isActive?'✅ فعّال':'❌ منتهي'}</div></div>
+    ${cdHtml}<div class="detail-grid"><div class="detail-item"><div class="di-label">الاشتراكات</div><div class="di-value">🔄 ${c.total_subs||0}</div></div><div class="detail-item"><div class="di-label">آخر باقة</div><div class="di-value">📋 ${PLAN_LABELS[c.latestSub?.plan]||'—'}</div></div><div class="detail-item"><div class="di-label">تاريخ الانتهاء</div><div class="di-value">📅 ${c.latestSub?.end_date||'—'}</div></div><div class="detail-item"><div class="di-label">الحساب</div><div class="di-value" style="color:${(c.latestSub?.paid||0)>=(c.latestSub?.price||1)?'var(--green)':'var(--orange)'}">💰 ${Number(c.latestSub?.paid||0).toLocaleString()}/${Number(c.latestSub?.price||0).toLocaleString()}</div></div></div>
+    ${qrHtml}<div class="sub-history"><div class="sub-history-title">📜 تاريخ الاشتراكات</div>${subHistory || '<div style="color:var(--muted);font-size:13px">لا يوجد اشتراكات</div>'}</div>
+    <div style="padding:0 24px 24px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-whatsapp" onclick="shareWhatsApp('${c.name}','${c.phone||''}','${PLAN_LABELS[c.latestSub?.plan]}',${c.latestSub?.paid||0},${c.latestSub?.price||0},'${c.latestSub?.start_date}','${c.latestSub?.end_date}')">💬 رسالة واتساب</button><button class="btn btn-primary" onclick="closeModal('detailModal');openRenew(${c.id},'${c.name}')">🔄 تجديد</button><button class="btn btn-secondary" onclick="openEditCustomer(${c.id},'${c.name}','${c.phone||''}')">✏️ تعديل</button></div>
+  `;
+  openModal('detailModal');
+}
+
+function renderPlanGrid(gridId, prefix) {
+  const prices = { monthly: settingsData.price_monthly||25000, '3months': settingsData.price_3months||60000, '6months': settingsData.price_6months||110000, yearly: settingsData.price_yearly||200000 };
+  document.getElementById(gridId).innerHTML = ['monthly','3months','6months','yearly'].filter(p => settingsData['plan_'+p+'_active'] !== '0').map(p => `<div class="plan-option" id="${prefix}_plan_${p}" onclick="selectPlan('${p}','${prefix}')"><div class="plan-name">${PLAN_LABELS[p]}</div><div class="plan-price">${Number(prices[p]).toLocaleString()}</div></div>`).join('');
+}
+function selectPlan(plan, prefix) {
+  if (prefix === 'add') selectedPlan = plan; else selectedRenewPlan = plan;
+  document.querySelectorAll(`[id^="${prefix}_plan_"]`).forEach(el => el.classList.remove('selected'));
+  document.getElementById(`${prefix}_plan_${plan}`).classList.add('selected'); document.getElementById(prefix + '_price_hint').innerHTML = '';
+}
+
+function setDateMode(m) { dateMode=m; document.getElementById('dateBtn_today').className='date-btn'+(m==='today'?' active':''); document.getElementById('dateBtn_manual').className='date-btn'+(m==='manual'?' active':''); document.getElementById('add_date_boxes').style.display=m==='manual'?'flex':'none'; }
+function setRenewDateMode(m) { renewDateMode=m; document.getElementById('renewDateBtn_today').className='date-btn'+(m==='today'?' active':''); document.getElementById('renewDateBtn_manual').className='date-btn'+(m==='manual'?' active':''); document.getElementById('renew_date_boxes').style.display=m==='manual'?'flex':'none'; }
+function previewQR(input, previewId) { const file = input.files[0]; if(!file)return; const r = new FileReader(); r.onload=e=>{ const img=document.getElementById(previewId); img.src=e.target.result; img.style.display='block'; }; r.readAsDataURL(file); }
+
+async function submitAddCustomer() {
+  const name = document.getElementById('add_name').value.trim(); if (!name) return toast('اكتب اسم الزبون', 'error'); if (!selectedPlan) return toast('اختر اشتراك', 'error');
+  let startDate = ''; if (dateMode === 'manual') { const d=document.getElementById('add_day').value, m=document.getElementById('add_month').value, y=document.getElementById('add_year').value; startDate=parseDMY(d+'/'+m+'/'+y); if(!startDate) return toast('تاريخ غير صحيح', 'error'); }
+  const fd = new FormData(); fd.append('name', name); fd.append('phone', document.getElementById('add_phone').value); const qrFile = document.getElementById('add_qr').files[0]; if (qrFile) fd.append('qr_image', qrFile);
+  try {
+    const res = await fetch('/api/customers', { method: 'POST', body: fd }); if(!res.ok) throw res; const customer = await res.json();
+    const paid = parseInt(document.getElementById('add_paid').value) || 0;
+    await fetch('/api/subscriptions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer_id: customer.id, plan: selectedPlan, paid, start_date: startDate }) });
+    closeModal('addModal'); resetAddForm(); await loadData(); toast('تمت الإضافة ✅', 'success');
+  } catch(e) { toast('حدث خطأ', 'error'); }
+}
+function resetAddForm() { document.getElementById('add_name').value=''; document.getElementById('add_phone').value=''; document.getElementById('add_paid').value=''; document.getElementById('add_qr').value=''; document.getElementById('add_preview').style.display='none'; selectedPlan=''; document.querySelectorAll('[id^="add_plan_"]').forEach(el=>el.classList.remove('selected')); setDateMode('today'); document.getElementById('add_price_hint').innerHTML=''; }
+
+function openRenew(id, name) { document.getElementById('renew_customer_id').value=id; document.getElementById('renew_customer_name').textContent='👤 '+name; document.getElementById('renew_paid').value=''; selectedRenewPlan=''; document.querySelectorAll('[id^="renew_plan_"]').forEach(el=>el.classList.remove('selected')); setRenewDateMode('today'); renderPlanGrid('renewPlanGrid', 'renew'); openModal('renewModal'); }
+async function submitRenew() {
+  const customerId = document.getElementById('renew_customer_id').value; if (!selectedRenewPlan) return toast('اختر اشتراك', 'error');
+  let startDate = ''; if (renewDateMode === 'manual') { const d=document.getElementById('renew_day').value, m=document.getElementById('renew_month').value, y=document.getElementById('renew_year').value; startDate=parseDMY(d+'/'+m+'/'+y); if(!startDate) return toast('تاريخ غير صحيح', 'error'); }
+  await fetch('/api/subscriptions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer_id: customerId, plan: selectedRenewPlan, paid: parseInt(document.getElementById('renew_paid').value)||0, start_date: startDate }) });
+  closeModal('renewModal'); await loadData(); toast('تم التجديد ✅', 'success');
+}
+
+function openDelete(id, name) { deleteTargetId=id; document.getElementById('deleteCustomerName').textContent=name; openModal('deleteModal'); }
+async function confirmDelete() { if(!deleteTargetId)return; await fetch(`/api/customers/${deleteTargetId}`, {method:'DELETE'}); closeModal('deleteModal'); await loadData(); toast('تم الحذف', 'success'); }
+function openEditCustomer(id, name, phone) { document.getElementById('edit_customer_id').value=id; document.getElementById('edit_name').value=name; document.getElementById('edit_phone').value=phone; document.getElementById('edit_qr').value=''; document.getElementById('edit_preview').style.display='none'; closeModal('detailModal'); openModal('editCustomerModal'); }
+async function submitEditCustomer() { const id=document.getElementById('edit_customer_id').value, name=document.getElementById('edit_name').value.trim(), phone=document.getElementById('edit_phone').value; if(!name)return toast('اكتب الاسم','error'); await fetch(`/api/customers/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,phone})}); const qrFile=document.getElementById('edit_qr').files[0]; if(qrFile){const fd=new FormData(); fd.append('qr_image',qrFile); await fetch(`/api/customers/${id}/qr`,{method:'PUT',body:fd});} closeModal('editCustomerModal'); await loadData(); toast('تم الحفظ ✅','success'); }
+function openEditSub(sId, cId, plan, price, paid, startD) { document.getElementById('editsub_id').value=sId; document.getElementById('editsub_customer_id').value=cId; document.getElementById('editsub_paid').value=paid; selectedEditSubPlan=plan; const p={monthly:settingsData.price_monthly||25000,'3months':settingsData.price_3months||60000,'6months':settingsData.price_6months||110000,yearly:settingsData.price_yearly||200000}; document.getElementById('editSubPlanGrid').innerHTML=['monthly','3months','6months','yearly'].map(x=>`<div class="plan-option ${x===plan?'selected':''}" id="editsub_plan_${x}" onclick="selectEditSubPlan('${x}')"><div class="plan-name">${PLAN_LABELS[x]}</div><div class="plan-price">${Number(p[x]).toLocaleString()}</div></div>`).join(''); const [y,m,d]=startD.split('-'); document.getElementById('editsub_day').value=parseInt(d); document.getElementById('editsub_month').value=parseInt(m); document.getElementById('editsub_year').value=y; updateRemaining(paid,'editsub'); closeModal('detailModal'); openModal('editSubModal'); }
+function selectEditSubPlan(p) { selectedEditSubPlan=p; document.querySelectorAll('[id^="editsub_plan_"]').forEach(el=>el.classList.remove('selected')); document.getElementById(`editsub_plan_${p}`).classList.add('selected'); updateRemaining(document.getElementById('editsub_paid').value,'editsub'); }
+async function submitEditSub() { const id=document.getElementById('editsub_id').value, cId=document.getElementById('editsub_customer_id').value; const d=document.getElementById('editsub_day').value, m=document.getElementById('editsub_month').value, y=document.getElementById('editsub_year').value; const startD=parseDMY(`${d}/${m}/${y}`); if(!startD)return toast('تاريخ غير صحيح','error'); await fetch(`/api/subscriptions/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({plan:selectedEditSubPlan, paid:parseInt(document.getElementById('editsub_paid').value)||0, start_date:startD})}); closeModal('editSubModal'); await loadData(); openDetail(cId); toast('تم الحفظ ✅','success'); }
+function openDeleteSub(sId, cId) { deleteSubTarget={sId,cId}; closeModal('detailModal'); openModal('deleteSubModal'); }
+async function confirmDeleteSub() { if(!deleteSubTarget)return; await fetch(`/api/subscriptions/${deleteSubTarget.sId}`, {method:'DELETE'}); closeModal('deleteSubModal'); await loadData(); openDetail(deleteSubTarget.cId); toast('تم حذف الاشتراك', 'success'); }
+
+// --- إعدادات وتحديثات الرصيد والأسعار ---
+function togglePlan(plan) { const btn = document.getElementById('toggle_' + plan); const isOn = btn.classList.contains('on'); btn.className = 'toggle' + (isOn ? '' : ' on'); settingsData['plan_' + plan + '_active'] = isOn ? '0' : '1'; }
+async function saveSettings() {
+  const data = { 
+    price_monthly: document.getElementById('price_monthly').value, cost_monthly: document.getElementById('cost_monthly').value,
+    price_3months: document.getElementById('price_3months').value, cost_3months: document.getElementById('cost_3months').value,
+    price_6months: document.getElementById('price_6months').value, cost_6months: document.getElementById('cost_6months').value,
+    price_yearly:  document.getElementById('price_yearly').value,  cost_yearly: document.getElementById('cost_yearly').value,
+    plan_monthly_active: settingsData.plan_monthly_active || '1', plan_3months_active: settingsData.plan_3months_active || '1', plan_6months_active: settingsData.plan_6months_active || '1', plan_yearly_active: settingsData.plan_yearly_active || '1' 
+  };
+  await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); await loadSettings(); toast('تم حفظ الأسعار ✅', 'success');
+}
+async function saveTelegramSettings() { const data = { telegram_token: document.getElementById('set_telegram_token').value, telegram_chat_id: document.getElementById('set_telegram_chat_id').value }; await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); toast('تم حفظ التلغرام ✅', 'success'); }
+
+// --- الرصيد ---
+async function loadRecharges() {
+  const res = await fetch('/api/recharges'); const data = await res.json();
+  document.getElementById('rechargeTable').innerHTML = data.map(r => `<tr><td>#${r.id}</td><td style="color:var(--green);font-weight:700">+ ${Number(r.amount).toLocaleString()}</td><td style="color:var(--muted);font-size:13px">${r.created_at}</td></tr>`).join('');
+}
+async function submitRecharge() {
+  const amt = document.getElementById('recharge_amount').value; if(!amt || amt <= 0) return toast('أدخل مبلغ صحيح', 'error');
+  await fetch('/api/recharges', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: parseInt(amt) }) });
+  document.getElementById('recharge_amount').value = ''; await loadData(); await loadRecharges(); toast('تم إضافة الرصيد ✅', 'success');
+}
+
+// --- الإحصائيات الرئيسية والفرعية ---
+async function loadStats() {
+  const res = await fetch('/api/stats'); const s = await res.json();
+  document.getElementById('homeTotalCust').textContent = s.total || 0;
+  document.getElementById('homeBalance').textContent = Number(s.balance||0).toLocaleString();
+  document.getElementById('homeMonthRev').textContent = Number(s.monthRevenue||0).toLocaleString();
+  document.getElementById('homeMonthDebt').textContent = Number(s.monthDebt||0).toLocaleString();
+}
+
+const MONTH_NAMES_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+let statsInitialized = false;
+async function initStatsPage() {
+  const select = document.getElementById('statsMonthSelect'); const now = new Date(); const currentYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  if (!statsInitialized) {
+    let months = []; try { const res = await fetch('/api/stats/available-months'); months = await res.json(); } catch(e) {}
+    if (!months.includes(currentYM)) months.unshift(currentYM); months.sort().reverse();
+    select.innerHTML = `<option value="all">📊 الكل (كل الفترات)</option>` + months.map(ym => { const [y, m] = ym.split('-'); return `<option value="${ym}">${parseInt(m)} - ${MONTH_NAMES_AR[parseInt(m)-1]} ${y}</option>`; }).join('');
+    select.value = currentYM; statsInitialized = true;
+  }
+  loadMonthlyStats(select.value);
+}
+async function loadMonthlyStats(ym) {
+  const res = await fetch(`/api/stats/monthly/${ym}`); const data = await res.json();
+  document.getElementById('statsRevenue').textContent = Number(data.revenue||0).toLocaleString(); document.getElementById('statsTotalPrice').textContent = Number(data.totalPrice||0).toLocaleString(); document.getElementById('statsDebt').textContent = Number(data.debt||0).toLocaleString(); document.getElementById('statsCount').textContent = data.count || 0;
+  const tbody = document.getElementById('statsByPlanTable'), empty = document.getElementById('statsEmpty');
+  if (!data.byPlan || !data.byPlan.length) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  tbody.innerHTML = data.byPlan.map(p => `<tr onclick="openPlanDetails('${ym}', '${p.plan}')" style="cursor:pointer" title="انقر لعرض المشتركين"><td><span class="plan-badge">${PLAN_LABELS[p.plan] || p.plan}</span></td><td>${p.count}</td><td style="color:var(--green);font-weight:700">${Number(p.paid).toLocaleString()}</td><td>${Number(p.price).toLocaleString()}</td><td>${(p.price-p.paid) > 0 ? `<span class="debt-badge">${Number(p.price-p.paid).toLocaleString()}</span>` : `<span class="paid-badge">✅ 0</span>`}</td></tr>`).join('');
+}
+
+// [جديد] عرض نافذة المشتركين حسب الباقة والشهر
+async function openPlanDetails(ym, plan) {
+  const res = await fetch(`/api/stats/monthly/${ym}/plan/${plan}`); const customers = await res.json();
+  document.getElementById('planDetailsTitle').textContent = `👥 مشتركي باقة (${PLAN_LABELS[plan]}) - ${ym==='all'?'كل الأوقات':ym}`;
+  document.getElementById('planDetailsTable').innerHTML = customers.map(c => `<tr><td><div style="font-weight:700">${c.name}</div></td><td style="direction:ltr;font-size:12px;color:var(--muted)">${c.phone||'—'}</td><td style="color:${c.paid>=c.price?'var(--green)':'var(--orange)'};font-weight:bold">${Number(c.paid).toLocaleString()}</td><td style="font-size:12px">${c.start_date}</td><td style="font-size:12px">${c.end_date}</td></tr>`).join('');
+  openModal('planDetailsModal');
+}
+
+// --- أدوات النظام الأساسية ---
+function downloadBackup() { window.open('/api/backup', '_blank'); toast('جاري تنزيل النسخة (db)', 'success'); }
+async function restoreBackup(input) {
+  const file = input.files[0]; if (!file) return; const fd = new FormData(); fd.append('backup', file);
+  try { const res = await fetch('/api/restore', { method: 'POST', body: fd }); if(res.ok) { toast('تم الاسترجاع! تحديث...', 'success'); setTimeout(() => window.location.reload(), 2000); } else toast('خطأ في الملف', 'error'); } catch(e) { toast('فشل الاتصال', 'error'); }
+}
+function showPage(page) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById('page-' + page).classList.add('active'); document.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active')); document.getElementById('nav-' + page)?.classList.add('active'); closeMenu(); if (page === 'stats') initStatsPage(); }
+function toggleMenu() { document.getElementById('dropdownMenu').classList.toggle('open'); } function closeMenu() { document.getElementById('dropdownMenu').classList.remove('open'); } document.addEventListener('click', e => { if (!e.target.closest('.menu-btn') && !e.target.closest('.dropdown-menu')) closeMenu(); });
+function openModal(id) { document.getElementById(id).classList.add('open'); } function closeModal(id) { document.getElementById(id).classList.remove('open'); } function openAddCustomer() { resetAddForm(); renderPlanGrid('planGrid', 'add'); openModal('addModal'); } document.querySelectorAll('.modal-overlay').forEach(o => { o.addEventListener('click', e => { if (e.target === o) closeModal(o.id); }); });
+function toast(msg, type = 'success') { const container = document.getElementById('toastContainer'); const el = document.createElement('div'); el.className = `toast ${type}`; el.innerHTML = `${type === 'success' ? '✅' : '❌'} ${msg}`; container.appendChild(el); setTimeout(() => el.remove(), 3500); }
+function parseDMY(str) { const parts = str.split('/'); if (parts.length !== 3) return null; const [d, m, y] = parts.map(Number); if (!d || !m || !y || y < 2000) return null; return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function updateRemaining(val, prefix) { let planKey; if (prefix === 'add') planKey = selectedPlan; else if (prefix === 'renew') planKey = selectedRenewPlan; else if (prefix === 'editsub') planKey = selectedEditSubPlan; const hintId = prefix + '_price_hint'; if (!planKey) { document.getElementById(hintId).innerHTML = ''; return; } const price = parseInt(settingsData['price_' + planKey]) || 0; const paid = parseInt(val) || 0; const rem = price - paid; if (rem <= 0) document.getElementById(hintId).innerHTML = `<span style="color:var(--green)">✅ كامل</span>`; else document.getElementById(hintId).innerHTML = `<span style="color:var(--orange)">💸 باقي: ${rem.toLocaleString()}</span>`; }
+
+init();
+</script>
+</body>
+</html>
