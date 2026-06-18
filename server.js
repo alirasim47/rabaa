@@ -5,11 +5,15 @@ const fs = require('fs');
 const cron = require('node-cron');
 const multer = require('multer'); // مكتبة رفع الملفات
 const { getDB, query } = require('./database');
-const { sendExpiryNotification } = require('./routes/telegram');
-const apiRoutes = require('./routes/api');
+const { sendExpiryNotification } = require('./telegram');
+
+// 👇 1. تم تصحيح المسار هنا (شيلنا كلمة routes/)
+const apiRoutes = require('./api'); 
 
 const app = express();
-const PORT = 3000;
+
+// 👇 2. تم التعديل هنا حتى يشتغل على Railway بدون كراش
+const PORT = process.env.PORT || 3000; 
 
 // ==========================================
 // 1. نظام الحماية (تسجيل الدخول) 🔒
@@ -75,7 +79,8 @@ app.get('/api/stats/monthly/all', (req, res) => {
 // ==========================================
 // تحميل قاعدة البيانات بالكامل (ملف .db الأصلي)
 app.get('/api/backup', (req, res) => {
-  const dbPath = path.join(__dirname, 'db', 'rabaa.db');
+  // 👇 3. تم تصحيح المسار هنا (شيلنا مجلد db لأن الملف موجود بالرئيسية)
+  const dbPath = path.join(__dirname, 'rabaa.db');
   if (fs.existsSync(dbPath)) {
     res.download(dbPath, `rabaa_backup_${Date.now()}.db`);
   } else {
@@ -88,7 +93,8 @@ app.post('/api/restore', upload.single('backup'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'لم يتم رفع ملف' });
   
   try {
-    const dbPath = path.join(__dirname, 'db', 'rabaa.db');
+    // 👇 وتم تصحيح المسار هنا أيضاً
+    const dbPath = path.join(__dirname, 'rabaa.db');
     // استبدال قاعدة البيانات القديمة بالملف المرفوع فوراً
     fs.copyFileSync(req.file.path, dbPath);
     fs.unlinkSync(req.file.path); // تنظيف
@@ -144,7 +150,7 @@ async function start() {
   app.listen(PORT, () => {
     console.log(`\n==============================================`);
     console.log(`🛡️  تم تفعيل الحماية | اليوزر: rabaa - الباسورد: 12345`);
-    console.log(`🚀 سيرفر الرابعة شغال ومحمي على: http://localhost:${PORT}`);
+    console.log(`🚀 سيرفر الرابعة شغال ومحمي على البورت: ${PORT}`);
     console.log(`==============================================\n`);
   });
 }
