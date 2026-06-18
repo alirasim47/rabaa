@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { query, run } = require('../db/database');
+const { query, run } = require('./database');
 const { sendExpiryNotification } = require('./telegram');
 
 // ==========================================
