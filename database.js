@@ -2,7 +2,7 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'db', 'rabaa.db');
+const DB_PATH = path.join(__dirname, 'rabaa.db');
 let db;
 
 async function getDB() {
