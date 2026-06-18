@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const cron = require('node-cron');
 const multer = require('multer'); // مكتبة رفع الملفات
-const { getDB, query } = require('./db/database');
+const { getDB, query } = require('./database');
 const { sendExpiryNotification } = require('./routes/telegram');
 const apiRoutes = require('./routes/api');
 
