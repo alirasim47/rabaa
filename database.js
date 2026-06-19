@@ -1,8 +1,8 @@
 const { Client } = require('pg');
 
-// الرابط النصي الرسمي الآمن مع إجبار تخطي جدار حماية الشهادات لـ Railway
+// استخدام الهوست المخصص للـ IPv4 (pooler) على البورت المباشر 5432 لتخطي عناد شبكة Railway نهائياً
 const client = new Client({
-  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@db.aotsntxicbqmvsbusgaz.supabase.co:5432/postgres",
+  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:5432/postgres",
   ssl: {
     rejectUnauthorized: false
   }
