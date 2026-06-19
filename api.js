@@ -86,7 +86,7 @@ router.delete('/customers/:id', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// قسم الاشتراكات - مضبوط ومطابق مية بالمية 🔄
+// قسم الاشتراكات - معالجة صارمة للنصوص الفارغة للتواريخ 🔄
 // ----------------------------------------------------
 router.post('/subscriptions', async (req, res) => {
   try {
@@ -96,7 +96,9 @@ router.post('/subscriptions', async (req, res) => {
 
     const price = parseInt(settings[`price_${plan}`] || (plan==='monthly'?25000:plan==='3months'?60000:plan==='6months'?110000:200000));
     const cost = parseInt(settings[`cost_${plan}`] || (plan==='monthly'?20000:plan==='3months'?50000:plan==='6months'?90000:160000));
-    const startD = start_date || new Date().toISOString().split('T')[0];
+    
+    // حماية صارمة: إذا كان التاريخ نصاً فارغاً أو غير معرف، يتم إجبار السيرفر على تاريخ اليوم فوراً
+    const startD = (start_date && start_date.trim() !== "") ? start_date : new Date().toISOString().split('T')[0];
     const endD = addDays(startD, PLAN_DAYS[plan] || 30);
 
     await run('UPDATE subscriptions SET is_active = 0 WHERE customer_id = $1', [customer_id]);
@@ -118,7 +120,6 @@ router.get('/stats', async (req, res) => {
     const totalRecharge = await query('SELECT COALESCE(SUM(amount),0) as sum FROM recharges');
     const totalCost = await query('SELECT COALESCE(SUM(cost),0) as sum FROM subscriptions');
     
-    // صياغة الفلتر الزمني المتوافق مع سحابة Postgres
     const currentMonth = new Date().toISOString().substring(0,7); 
     
     const monthRevenue = await query("SELECT COALESCE(SUM(paid),0) as sum FROM subscriptions WHERE SUBSTRING(start_date, 1, 7) = $1", [currentMonth]);
