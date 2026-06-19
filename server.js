@@ -3,30 +3,27 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const cron = require('node-cron');
-const multer = require('multer'); // مكتبة رفع الملفات
-const { getDB, query } = require('./database');
+const multer = require('multer');
+const { getDB, query, run } = require('./database');
 const { sendExpiryNotification } = require('./telegram');
 
-// 👇 1. تم تصحيح المسار هنا (شيلنا كلمة routes/)
 const apiRoutes = require('./api'); 
 
 const app = express();
-
-// 👇 2. تم التعديل هنا حتى يشتغل على Railway بدون كراش
 const PORT = process.env.PORT || 3000; 
 
 // ==========================================
 // 1. نظام الحماية (تسجيل الدخول) 🔒
 // ==========================================
 const ADMIN_USER = 'rabaa';
-const ADMIN_PASS = '12345'; // تكدر تغير الباسورد منا بأي وقت
+const ADMIN_PASS = '12345'; 
 
 app.use((req, res, next) => {
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
   
   if (login === ADMIN_USER && password === ADMIN_PASS) {
-    return next(); // دخول ناجح
+    return next();
   }
   
   res.set('WWW-Authenticate', 'Basic realm="Secure Area"');
@@ -38,32 +35,32 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// إعداد مجلد رفع الملفات (للاسترجاع وصور QR)
 const upload = multer({ dest: 'public/uploads/' });
 
 // ==========================================
-// 2. إصلاح خلل إحصائيات "الكل" 📊
+// 2. إصلاح خلل إحصائيات "الكل" بالسحابة 📊
 // ==========================================
-app.get('/api/stats/monthly/all', (req, res) => {
+app.get('/api/stats/monthly/all', async (req, res) => {
   try {
-    const stats = query(`
+    const statsRows = await query(`
       SELECT 
-        COUNT(*) as count, 
-        SUM(paid) as revenue, 
-        SUM(price) as totalPrice, 
-        SUM(price - paid) as debt 
+        COUNT(*)::int as count, 
+        COALESCE(SUM(paid), 0)::int as revenue, 
+        COALESCE(SUM(price), 0)::int as totalprice, 
+        COALESCE(SUM(price - paid), 0)::int as debt 
       FROM subscriptions
-    `)[0] || {};
+    `);
+    const stats = statsRows[0] || {};
     
-    const byPlan = query(`
-      SELECT plan, COUNT(*) as count, SUM(price) as price, SUM(paid) as paid 
+    const byPlan = await query(`
+      SELECT plan, COUNT(*)::int as count, COALESCE(SUM(price), 0)::int as price, COALESCE(SUM(paid), 0)::int as paid 
       FROM subscriptions 
       GROUP BY plan
     `);
 
     res.json({
       revenue: stats.revenue || 0,
-      totalPrice: stats.totalPrice || 0,
+      totalPrice: stats.totalprice || 0,
       debt: stats.debt || 0,
       count: stats.count || 0,
       byPlan: byPlan || []
@@ -75,58 +72,36 @@ app.get('/api/stats/monthly/all', (req, res) => {
 });
 
 // ==========================================
-// 3. نظام النسخ الاحتياطي (Backup & Restore) 💾
+// 3. نظام النسخ الاحتياطي (تعطيل محلي مؤقت لحماية السيرفر) 💾
 // ==========================================
-// تحميل قاعدة البيانات بالكامل (ملف .db الأصلي)
 app.get('/api/backup', (req, res) => {
-  // 👇 3. تم تصحيح المسار هنا (شيلنا مجلد db لأن الملف موجود بالرئيسية)
-  const dbPath = path.join(__dirname, 'rabaa.db');
-  if (fs.existsSync(dbPath)) {
-    res.download(dbPath, `rabaa_backup_${Date.now()}.db`);
-  } else {
-    res.status(404).json({ error: 'ملف قاعدة البيانات غير موجود' });
-  }
+  res.status(400).json({ error: 'النسخ الاحتياطي يعمل تلقائياً الآن عبر سحابة Supabase بقسم الـ Backups.' });
 });
 
-// استرجاع قاعدة البيانات (رفع ملف .db أو .json)
 app.post('/api/restore', upload.single('backup'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'لم يتم رفع ملف' });
-  
-  try {
-    // 👇 وتم تصحيح المسار هنا أيضاً
-    const dbPath = path.join(__dirname, 'rabaa.db');
-    // استبدال قاعدة البيانات القديمة بالملف المرفوع فوراً
-    fs.copyFileSync(req.file.path, dbPath);
-    fs.unlinkSync(req.file.path); // تنظيف
-    
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Restore Error:', err);
-    res.status(500).json({ error: 'فشل استرجاع النسخة الاحتياطية' });
-  }
+  res.status(400).json({ error: 'البيانات تدار حركياً عبر السحابة مباشرة.' });
 });
 
 // مسارات الـ API الأساسية
 app.use('/api', apiRoutes);
 
-// مسار الواجهة الرئيسي
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ==========================================
-// 4. الإشعارات التلقائية (الـ Cron Job) 🤖
+// 4. الإشعارات التلقائية الحركية (الـ Cron Job) 🤖
 // ==========================================
-// يشتغل كل يوم الساعة 9:00 صباحاً
 cron.schedule('0 11 * * *', async () => {
-  console.log('\n🔍 جاري فحص الاشتراكات المنتهية لإرسال الإشعارات التلقائية...');
+  console.log('\n🔍 جاري فحص الاشتراكات المنتهية لإرسال الإشعارات التلقائية لـ Supabase...');
   try {
-    const expired = query(`
+    const todayStr = new Date().toISOString().split('T')[0];
+    const expired = await query(`
       SELECT c.*, s.plan, s.price, s.paid, s.end_date, s.id as sub_id
       FROM subscriptions s
       JOIN customers c ON c.id = s.customer_id
-      WHERE s.is_active = 1 AND date(s.end_date) = date('now','localtime')
-    `);
+      WHERE s.is_active = 1 AND s.end_date = $1
+    `, [todayStr]);
 
     if (expired.length === 0) {
       console.log('✅ لا توجد اشتراكات تنتهي اليوم.');
@@ -134,11 +109,9 @@ cron.schedule('0 11 * * *', async () => {
 
     for (const row of expired) {
       console.log(`📨 جاري إرسال إشعار للزبون: ${row.name}`);
-      await sendExpiryNotification({ id: row.id, name: row.name, qr_image: row.qr_image }, {
+      await sendExpiryNotification(row, {
         plan: row.plan, price: row.price, paid: row.paid, end_date: row.end_date
       });
-      // تحديث حالة الإشعار في قاعدة البيانات
-      query(`UPDATE subscriptions SET notified_at = datetime('now','localtime') WHERE id = ${row.sub_id}`);
     }
   } catch (e) {
     console.error('❌ خطأ في الإشعارات التلقائية:', e.message);
@@ -146,13 +119,17 @@ cron.schedule('0 11 * * *', async () => {
 });
 
 async function start() {
-  await getDB();
-  app.listen(PORT, () => {
-    console.log(`\n==============================================`);
-    console.log(`🛡️  تم تفعيل الحماية | اليوزر: rabaa - الباسورد: 12345`);
-    console.log(`🚀 سيرفر الرابعة شغال ومحمي على البورت: ${PORT}`);
-    console.log(`==============================================\n`);
-  });
+  try {
+    await getDB();
+    app.listen(PORT, () => {
+      console.log(`\n==============================================`);
+      console.log(`🛡️  تم تفعيل الحماية | اليوزر: rabaa - الباسورد: 12345`);
+      console.log(`🚀 سيرفر الرابعة شغال ومحمي على البورت: ${PORT}`);
+      console.log(`==============================================\n`);
+    });
+  } catch (err) {
+    console.error('❌ فشل بدء تشغيل السيرفر الموحد:', err.message);
+  }
 }
 
 start();
