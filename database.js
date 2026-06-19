@@ -1,7 +1,7 @@
 const { Client } = require('pg');
 
-// الكود الحين يقرا الرابط مباشرة من متغيرات البيئة السحابية لريلوفاي لتجنب اي تعليق بالكود
-const connectionString = process.env.DATABASE_URL || "postgresql://postgres:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?options=-c%20search_path=";
+// قراءة الرابط ديناميكياً من الـ Variables
+const connectionString = process.env.DATABASE_URL || "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require";
 
 const client = new Client({
   connectionString: connectionString,
@@ -10,14 +10,18 @@ const client = new Client({
   }
 });
 
+// متغير داخلي صارم لمنع تكرار الاتصال نهائياً
+let isConnectingOrConnected = false;
+
 async function getDB() {
-  if (!client._connected) {
+  if (!isConnectingOrConnected) {
     try {
+      isConnectingOrConnected = true;
       await client.connect();
-      client._connected = true;
       console.log("✅ تم الاتصال بقاعدة بيانات Supabase بنجاح!");
       await initTables(); 
     } catch (err) {
+      isConnectingOrConnected = false;
       console.error("❌ فشل الاتصال بـ Supabase:", err.message);
       throw err;
     }
