@@ -1,12 +1,8 @@
 const { Client } = require('pg');
 
-// فصل البيانات بشكل كامل لتجاوز مشكلة عدم التعرف على الـ tenant في السحابة
+// الرابط الرسمي القياسي المخصص للـ Pooler على بورت 5432 مع تمرير الـ tenant بشكل آمن مية بالمية
 const client = new Client({
-  host: "aws-0-eu-west-1.pooler.supabase.com",
-  port: 5432,
-  user: "postgres.ozwt9luQahLN1zzX", // معرّف المشروع الصحيح لـ Supabase Pooler
-  password: "ozwt9luQahLN1zzX",
-  database: "postgres",
+  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?options=-c%20search_path=",
   ssl: {
     rejectUnauthorized: false
   }
