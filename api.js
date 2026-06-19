@@ -86,7 +86,7 @@ router.delete('/customers/:id', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// قسم الاشتراكات - [تم الإصلاح ومطابقة المتغيرات مية بالمية] 🔄
+// قسم الاشتراكات - مضبوط ومطابق مية بالمية 🔄
 // ----------------------------------------------------
 router.post('/subscriptions', async (req, res) => {
   try {
@@ -99,10 +99,8 @@ router.post('/subscriptions', async (req, res) => {
     const startD = start_date || new Date().toISOString().split('T')[0];
     const endD = addDays(startD, PLAN_DAYS[plan] || 30);
 
-    // إلغاء تفعيل الاشتراكات القديمة للزبون
     await run('UPDATE subscriptions SET is_active = 0 WHERE customer_id = $1', [customer_id]);
     
-    // إصلاح تمرير الـ 8 متغيرات بشكل صحيح لتطابق الهيكل السحابي تماماً
     await run('INSERT INTO subscriptions (customer_id, plan, price, cost, paid, start_date, end_date, is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
       [customer_id, plan, price, cost, parseInt(paid)||0, startD, endD, 1]);
 
@@ -112,17 +110,19 @@ router.post('/subscriptions', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// قسم الإحصائيات المتوافق مع Postgres السحابي 📊
+// قسم الإحصائيات المتوافق والمعدل لـ Postgres السحابي 📊
 // ----------------------------------------------------
 router.get('/stats', async (req, res) => {
   try {
     const total = await query('SELECT COUNT(*) as count FROM customers');
     const totalRecharge = await query('SELECT COALESCE(SUM(amount),0) as sum FROM recharges');
     const totalCost = await query('SELECT COALESCE(SUM(cost),0) as sum FROM subscriptions');
-    const currentMonth = new Date().toISOString().substring(0,7) + '%';
     
-    const monthRevenue = await query("SELECT COALESCE(SUM(paid),0) as sum FROM subscriptions WHERE start_date LIKE $1", [currentMonth]);
-    const monthDebt = await query("SELECT COALESCE(SUM(price-paid),0) as sum FROM subscriptions WHERE paid < price AND start_date LIKE $1", [currentMonth]);
+    // صياغة الفلتر الزمني المتوافق مع سحابة Postgres
+    const currentMonth = new Date().toISOString().substring(0,7); 
+    
+    const monthRevenue = await query("SELECT COALESCE(SUM(paid),0) as sum FROM subscriptions WHERE SUBSTRING(start_date, 1, 7) = $1", [currentMonth]);
+    const monthDebt = await query("SELECT COALESCE(SUM(price-paid),0) as sum FROM subscriptions WHERE paid < price AND SUBSTRING(start_date, 1, 7) = $1", [currentMonth]);
 
     res.json({
       total: parseInt(total[0].count) || 0,
@@ -143,9 +143,16 @@ router.get('/stats/available-months', async (req, res) => {
 router.get('/stats/monthly/:yearMonth', async (req, res) => {
   try {
     const { yearMonth } = req.params;
-    const filter = yearMonth === 'all' ? '%' : yearMonth + '%';
-    const s = await query("SELECT COALESCE(SUM(paid),0) as revenue, COALESCE(SUM(price-paid),0) as debt, COUNT(*)::int as count, COALESCE(SUM(price),0) as total FROM subscriptions WHERE start_date LIKE $1", [filter]);
-    const byPlan = await query("SELECT plan, COUNT(*)::int as count, COALESCE(SUM(paid),0) as paid, COALESCE(SUM(price),0) as price FROM subscriptions WHERE start_date LIKE $1 GROUP BY plan", [filter]);
+    
+    let s, byPlan;
+    if (yearMonth === 'all') {
+      s = await query("SELECT COALESCE(SUM(paid),0) as revenue, COALESCE(SUM(price-paid),0) as debt, COUNT(*)::int as count, COALESCE(SUM(price),0) as total FROM subscriptions");
+      byPlan = await query("SELECT plan, COUNT(*)::int as count, COALESCE(SUM(paid),0) as paid, COALESCE(SUM(price),0) as price FROM subscriptions GROUP BY plan");
+    } else {
+      s = await query("SELECT COALESCE(SUM(paid),0) as revenue, COALESCE(SUM(price-paid),0) as debt, COUNT(*)::int as count, COALESCE(SUM(price),0) as total FROM subscriptions WHERE SUBSTRING(start_date, 1, 7) = $1", [yearMonth]);
+      byPlan = await query("SELECT plan, COUNT(*)::int as count, COALESCE(SUM(paid),0) as paid, COALESCE(SUM(price),0) as price FROM subscriptions WHERE SUBSTRING(start_date, 1, 7) = $1 GROUP BY plan", [yearMonth]);
+    }
+    
     res.json({ revenue: s[0].revenue, debt: s[0].debt, count: s[0].count, totalPrice: s[0].total, byPlan });
   } catch (err) { res.json({ revenue: 0, debt: 0, count: 0, totalPrice: 0, byPlan: [] }); }
 });
