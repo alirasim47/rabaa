@@ -1,8 +1,11 @@
 const { Client } = require('pg');
 
-// تم تعديل الهوست إلى الرابط المتوافق مع IPv4 للاتصال المستقر من Railway
+// تم تحديث إعدادات الـ SSL للسماح بالاتصال من داخل Railway بدون قيود الشهادة التلقائية
 const client = new Client({
-  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require",
+  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:6543/postgres",
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 async function getDB() {
