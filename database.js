@@ -1,8 +1,8 @@
 const { Client } = require('pg');
 
-// الرابط المباشر لقاعدة بيانات Supabase الموضحة بالصورة مالتك
+// تم تعديل الهوست إلى الرابط المتوافق مع IPv4 للاتصال المستقر من Railway
 const client = new Client({
-  connectionString: "postgresql://postgres:ozwt9luQahLN1zzX@db.aotsntxicbqmvsbusgaz.supabase.co:5432/postgres",
+  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require",
 });
 
 async function getDB() {
@@ -11,7 +11,7 @@ async function getDB() {
       await client.connect();
       client._connected = true;
       console.log("✅ تم الاتصال بقاعدة بيانات Supabase بنجاح!");
-      await initTables(); // بناء الجداول تلقائياً عند تشغيل Railway
+      await initTables(); 
     } catch (err) {
       console.error("❌ فشل الاتصال بـ Supabase:", err.message);
       throw err;
