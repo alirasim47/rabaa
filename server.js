@@ -23,7 +23,7 @@ app.use((req, res, next) => {
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
   
   if (login === ADMIN_USER && password === ADMIN_PASS) {
-    return next();
+    return next(); 
   }
   
   res.set('WWW-Authenticate', 'Basic realm="Secure Area"');
@@ -85,6 +85,7 @@ app.post('/api/restore', upload.single('backup'), (req, res) => {
 // مسارات الـ API الأساسية
 app.use('/api', apiRoutes);
 
+// مسار الواجهة الرئيسي
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
