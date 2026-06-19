@@ -6,7 +6,6 @@ async function getSetting(key) {
   return rows[0]?.value || '';
 }
 
-// الدالة العامة لإرسال أي رسالة
 async function sendTelegramMessage(text) {
   const token = await getSetting('telegram_token');
   const chatId = await getSetting('telegram_chat_id');
@@ -20,7 +19,6 @@ async function sendTelegramMessage(text) {
   } catch (e) { console.error('Telegram error:', e.message); }
 }
 
-// الدالة المفقودة التي يبحث عنها سيرفر server.js و api.js
 async function sendExpiryNotification(customer, sub) {
   const PLAN_LABELS = { monthly: 'شهري', '3months': '3 أشهر', '6months': '6 أشهر', yearly: 'سنوي' };
   const text = `⚠️ <b>إشعار انتهاء اشتراك</b>\n\n👤 <b>الزبون:</b> ${customer.name}\n📱 <b>الهاتف:</b> ${customer.phone || 'لا يوجد'}\n📋 <b>الباقة:</b> ${PLAN_LABELS[sub.plan] || sub.plan}\n📅 <b>تاريخ الانتهاء:</b> ${sub.end_date}\n💰 <b>الحساب:</b> ${sub.paid >= sub.price ? 'واصل ✅' : 'باقي ديون 💸'}`;
