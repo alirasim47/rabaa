@@ -1,31 +1,41 @@
 const { Pool } = require('pg');
 
-// تم دمج خيارات تخطي فحص الشهادة الصارم مباشرة بالرابط لإجبار ريلواي على تمريره
-const connectionString = process.env.DATABASE_URL || "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=no-verify";
+// قراءة الرابط من Railway Variables
+const connectionString = process.env.DATABASE_URL;
 
+if (!connectionString) {
+  console.error('❌ خطأ: DATABASE_URL غير موجود في المتغيرات!');
+  process.exit(1);
+}
+
+// إنشاء Pool اتصال مستقر
 const pool = new Pool({
   connectionString: connectionString,
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false  // تخطي فحص الشهادات الصارم
   },
   max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000,
 });
 
+// دالة الحصول على الاتصال
 async function getDB() {
   return pool;
 }
 
+// دالة الاستعلام (SELECT)
 async function query(sql, params = []) {
   const res = await pool.query(sql, params);
   return res.rows;
 }
 
+// دالة التنفيذ (INSERT, UPDATE, DELETE, CREATE)
 async function run(sql, params = []) {
   return await pool.query(sql, params);
 }
 
+// إنشاء الجداول تلقائياً عند التشغيل
 async function initTables() {
   try {
     await run(`
@@ -36,6 +46,7 @@ async function initTables() {
         qr_image TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      
       CREATE TABLE IF NOT EXISTS subscriptions (
         id SERIAL PRIMARY KEY,
         customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
@@ -48,11 +59,13 @@ async function initTables() {
         is_active INTEGER DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      
       CREATE TABLE IF NOT EXISTS recharges (
         id SERIAL PRIMARY KEY,
         amount INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -64,6 +77,8 @@ async function initTables() {
   }
 }
 
+// تشغيل إنشاء الجداول
 initTables();
 
+// تصدير الدوال
 module.exports = { getDB, query, run };
