@@ -1,8 +1,8 @@
 const { Client } = require('pg');
 
-// الرابط الرسمي الصحيح والمباشر المتوافق مع سيرفرات Railway و Supabase سوا
+// الاتصال المباشر والآمن والسلس المتوافق 100% مع Railway و Supabase بدون تعقيدات البولر
 const client = new Client({
-  connectionString: "postgresql://postgres:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:6543/postgres",
+  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@db.aotsntxicbqmvsbusgaz.supabase.co:5432/postgres",
   ssl: {
     rejectUnauthorized: false
   }
