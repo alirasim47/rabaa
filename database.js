@@ -1,8 +1,10 @@
 const { Client } = require('pg');
 
-// الرابط الرسمي القياسي المخصص للـ Pooler على بورت 5432 مع تمرير الـ tenant بشكل آمن مية بالمية
+// الكود الحين يقرا الرابط مباشرة من متغيرات البيئة السحابية لريلوفاي لتجنب اي تعليق بالكود
+const connectionString = process.env.DATABASE_URL || "postgresql://postgres:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?options=-c%20search_path=";
+
 const client = new Client({
-  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?options=-c%20search_path=",
+  connectionString: connectionString,
   ssl: {
     rejectUnauthorized: false
   }
