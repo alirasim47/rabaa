@@ -1,21 +1,19 @@
 const { Pool } = require('pg');
 
-// قراءة الرابط ديناميكياً من الـ Variables مع البورت السحابي المستقر
-const connectionString = process.env.DATABASE_URL || "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require";
+// تم دمج خيارات تخطي فحص الشهادة الصارم مباشرة بالرابط لإجبار ريلواي على تمريره
+const connectionString = process.env.DATABASE_URL || "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=no-verify";
 
-// استخدام خزان الاتصالات Pool لإدارة مئات الطلبات المتزامنة والـ Cron بدون تعارض
 const pool = new Pool({
   connectionString: connectionString,
   ssl: {
     rejectUnauthorized: false
   },
-  max: 10, // حد أقصى 10 اتصالات متزامنة لتوفير رصيد Supabase
+  max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
 
 async function getDB() {
-  // الـ Pool يفتح ويتصل تلقائياً عند أول استعلام ولا يحتاج لدالة connect يديرها المطور
   return pool;
 }
 
@@ -28,7 +26,6 @@ async function run(sql, params = []) {
   return await pool.query(sql, params);
 }
 
-// دالة فحص وتجهيز الهياكل عند إقلاع السيرفر لأول مرة
 async function initTables() {
   try {
     await run(`
@@ -67,7 +64,6 @@ async function initTables() {
   }
 }
 
-// تشغيل الفحص الأولي للهياكل فور استدعاء الملف
 initTables();
 
 module.exports = { getDB, query, run };
