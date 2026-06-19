@@ -1,9 +1,8 @@
-
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { query, run } = require('./database'); // استدعاء مباشر لأن الملفات بنفس المجلد
+const { query, run } = require('./database'); 
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, 'public/uploads')),
@@ -87,7 +86,7 @@ router.delete('/customers/:id', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// قسم الاشتراكات والرصيد
+// قسم الاشتراكات - [تم الإصلاح ومطابقة المتغيرات مية بالمية] 🔄
 // ----------------------------------------------------
 router.post('/subscriptions', async (req, res) => {
   try {
@@ -100,9 +99,12 @@ router.post('/subscriptions', async (req, res) => {
     const startD = start_date || new Date().toISOString().split('T')[0];
     const endD = addDays(startD, PLAN_DAYS[plan] || 30);
 
+    // إلغاء تفعيل الاشتراكات القديمة للزبون
     await run('UPDATE subscriptions SET is_active = 0 WHERE customer_id = $1', [customer_id]);
-    await run('INSERT INTO subscriptions (customer_id, plan, price, cost, paid, start_date, end_date, is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,1)',
-      [customer_id, plan, price, cost, parseInt(paid)||0, startD, endD]);
+    
+    // إصلاح تمرير الـ 8 متغيرات بشكل صحيح لتطابق الهيكل السحابي تماماً
+    await run('INSERT INTO subscriptions (customer_id, plan, price, cost, paid, start_date, end_date, is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      [customer_id, plan, price, cost, parseInt(paid)||0, startD, endD, 1]);
 
     const sub = await query('SELECT * FROM subscriptions ORDER BY id DESC LIMIT 1');
     res.json(sub[0]);
@@ -110,7 +112,7 @@ router.post('/subscriptions', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// قسم الإحصائيات الشهرية الحركية (Postgres متوافق)
+// قسم الإحصائيات المتوافق مع Postgres السحابي 📊
 // ----------------------------------------------------
 router.get('/stats', async (req, res) => {
   try {
