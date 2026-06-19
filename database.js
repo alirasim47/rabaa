@@ -1,12 +1,8 @@
 const { Client } = require('pg');
 
-// تم وضع الآيبي الرقمي المباشر (IPv4) المخصص لسيرفرك في Supabase لتخطي عناد شبكة Railway مية بالمية
+// الرابط النصي الرسمي الآمن مع إجبار تخطي جدار حماية الشهادات لـ Railway
 const client = new Client({
-  host: "63.35.215.111", // الآيبي المباشر لسيرفر aws-0-eu-west-1 في Supabase
-  port: 5432,
-  user: "postgres",
-  password: "ozwt9luQahLN1zzX",
-  database: "postgres",
+  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@db.aotsntxicbqmvsbusgaz.supabase.co:5432/postgres",
   ssl: {
     rejectUnauthorized: false
   }
