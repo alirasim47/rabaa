@@ -1,8 +1,12 @@
 const { Client } = require('pg');
 
-// استخدام الهوست المخصص للـ IPv4 (pooler) على البورت المباشر 5432 لتخطي عناد شبكة Railway نهائياً
+// فصل البيانات بشكل كامل لتجاوز مشكلة عدم التعرف على الـ tenant في السحابة
 const client = new Client({
-  connectionString: "postgresql://postgres.ozwt9luQahLN1zzX:ozwt9luQahLN1zzX@aws-0-eu-west-1.pooler.supabase.com:5432/postgres",
+  host: "aws-0-eu-west-1.pooler.supabase.com",
+  port: 5432,
+  user: "postgres.ozwt9luQahLN1zzX", // معرّف المشروع الصحيح لـ Supabase Pooler
+  password: "ozwt9luQahLN1zzX",
+  database: "postgres",
   ssl: {
     rejectUnauthorized: false
   }
