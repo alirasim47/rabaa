@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const cron = require('node-cron');
 const multer = require('multer');
-const { getDB, query, run } = require('./database');
+const { query, run } = require('./database'); // استدعاء مباشر ومنظف للـ Pool
 const { sendExpiryNotification } = require('./telegram');
 
 const apiRoutes = require('./api'); 
@@ -38,7 +38,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const upload = multer({ dest: 'public/uploads/' });
 
 // ==========================================
-// 2. إصلاح خلل إحصائيات "الكل" بالسحابة 📊
+// 2. نظام إحصائيات "الكل" بالسحابة 📊
 // ==========================================
 app.get('/api/stats/monthly/all', async (req, res) => {
   try {
@@ -72,7 +72,7 @@ app.get('/api/stats/monthly/all', async (req, res) => {
 });
 
 // ==========================================
-// 3. نظام النسخ الاحتياطي (تعطيل محلي مؤقت لحماية السيرفر) 💾
+// 3. نظام النسخ الاحتياطي السحابي المستدام 💾
 // ==========================================
 app.get('/api/backup', (req, res) => {
   res.status(400).json({ error: 'النسخ الاحتياطي يعمل تلقائياً الآن عبر سحابة Supabase بقسم الـ Backups.' });
@@ -91,7 +91,7 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// 4. الإشعارات التلقائية الحركية (الـ Cron Job) 🤖
+// 4. الإشعارات التلقائية الحركية الآمنة (الـ Cron Job المحدث للـ Pool) 🤖
 // ==========================================
 cron.schedule('0 11 * * *', async () => {
   console.log('\n🔍 جاري فحص الاشتراكات المنتهية لإرسال الإشعارات التلقائية لـ Supabase...');
@@ -119,18 +119,10 @@ cron.schedule('0 11 * * *', async () => {
   }
 });
 
-async function start() {
-  try {
-    await getDB();
-    app.listen(PORT, () => {
-      console.log(`\n==============================================`);
-      console.log(`🛡️  تم تفعيل الحماية | اليوزر: rabaa - الباسورد: 12345`);
-      console.log(`🚀 سيرفر الرابعة شغال ومحمي على البورت: ${PORT}`);
-      console.log(`==============================================\n`);
-    });
-  } catch (err) {
-    console.error('❌ فشل بدء تشغيل السيرفر الموحد:', err.message);
-  }
-}
-
-start();
+// تشغيل السيرفر المباشر بالاعتماد على خزان الـ Pool المستقر
+app.listen(PORT, () => {
+  console.log(`\n==============================================`);
+  console.log(`🛡️  تم تفعيل الحماية السحابية بنظام الـ Pool الاحترافي`);
+  console.log(`🚀 سيرفر الرابعة شغال ومحمي أونلاين على البورت: ${PORT}`);
+  console.log(`==============================================\n`);
+});
