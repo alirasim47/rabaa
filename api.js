@@ -162,7 +162,70 @@ router.get('/recharges', async (req, res) => {
   const rows = await query(`SELECT * FROM recharges ORDER BY created_at DESC`);
   res.json(rows);
 });
+// 1. المسار المفقود لتشغيل (نافذة تفاصيل الزبون + أزرار التعديل والواتساب)
+router.get('/customers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerRows = await query('SELECT * FROM customers WHERE id = $1', [id]);
+    if (customerRows.length === 0) return res.status(404).json({ error: 'الزبون غير موجود' });
+    const customer = customerRows[0];
 
+    const subs = await query('SELECT * FROM subscriptions WHERE customer_id = $1 ORDER BY created_at DESC', [id]);
+    const latestSub = subs[0] || null;
+    
+    let timeInfo = null;
+    if (latestSub && latestSub.end_date) {
+      const diffMs = new Date(latestSub.end_date) - new Date();
+      if (diffMs <= 0) {
+        timeInfo = { expired: true, expiredDays: Math.abs(Math.floor(diffMs / 86400000)) };
+      } else {
+        timeInfo = { expired: false, days: Math.floor(diffMs / 86400000) };
+      }
+    }
+
+    res.json({
+      ...customer,
+      subscriptions: subs,
+      latestSub: latestSub,
+      total_subs: subs.length,
+      timeInfo: timeInfo
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 2. المسار المفقود لتحديث صورة الـ QR للزبون عند التعديل
+router.put('/customers/:id/qr', upload.single('qr_image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'لم يتم رفع صورة' });
+    const qrImage = `/uploads/${req.file.filename}`;
+    await run('UPDATE customers SET qr_image = $1 WHERE id = $2', [qrImage, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 3. المسار المفقود لتشغيل (نافذة عرض زبائن باقة معينة داخل الإحصائيات)
+router.get('/stats/monthly/:yearMonth/plan/:plan', async (req, res) => {
+  try {
+    const { yearMonth, plan } = req.params;
+    let rows;
+    if (yearMonth === 'all') {
+      rows = await query(`
+        SELECT c.name, c.phone, s.paid, s.price, s.start_date, s.end_date 
+        FROM subscriptions s
+        JOIN customers c ON c.id = s.customer_id
+        WHERE s.plan = $1 ORDER BY s.created_at DESC
+      `, [plan]);
+    } else {
+      rows = await query(`
+        SELECT c.name, c.phone, s.paid, s.price, s.start_date, s.end_date 
+        FROM subscriptions s
+        JOIN customers c ON c.id = s.customer_id
+        WHERE s.plan = $1 AND SUBSTRING(s.start_date, 1, 7) = $2 ORDER BY s.created_at DESC
+      `, [plan, yearMonth]);
+    }
+    res.json(rows);
+  } catch (err) { res.status(500).json([]); }
+});
 router.post('/recharges', async (req, res) => {
   await run(`INSERT INTO recharges (amount) VALUES ($1)`, [parseInt(req.body.amount)]);
   res.json({ ok: true });
