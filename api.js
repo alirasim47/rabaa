@@ -2,15 +2,16 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { query, run } = require('./database'); 
+const { createClient } = require('@supabase/supabase-js');
+const { query, run } = require('./database');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, 'public/uploads')),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `qr_${Date.now()}${ext}`);
-  },
-});
+// إعداد Supabase Client للـ Storage
+const supabase = createClient(
+  'https://aotsntxicbqmvsbusgaz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvdHNudHhpY2JxbXZzYnVzZ2F6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTc5NjQ0MSwiZXhwIjoyMDk3MzcyNDQxfQ.nxn3w7abi8sB1w-OS08OepbbLn8sc2knX64TfX4oZjw'
+);
+
+const storage = multer.memoryStorage(); // حفظ في الذاكرة بدلاً من القرص
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 const PLAN_DAYS = { monthly: 30, '3months': 90, '6months': 180, yearly: 365 };
 
@@ -62,8 +63,35 @@ router.post('/customers', upload.single('qr_image'), async (req, res) => {
   try {
     const { name, phone } = req.body;
     if (!name) return res.status(400).json({ error: 'الاسم مطلوب' });
-    const qrImage = req.file ? `/uploads/${req.file.filename}` : null;
-    await run('INSERT INTO customers (name, phone, qr_image) VALUES ($1, $2, $3)', [name, phone || '', qrImage]);
+    
+    let qrImageUrl = null;
+    
+    // رفع الصورة إلى Supabase Storage إذا موجودة
+    if (req.file) {
+      const ext = path.extname(req.file.originalname);
+      const fileName = `qr_${Date.now()}${ext}`;
+      
+      const { data, error } = await supabase.storage
+        .from('qr-codes')
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false
+        });
+      
+      if (error) {
+        console.error('Storage upload error:', error);
+        return res.status(500).json({ error: 'فشل رفع الصورة' });
+      }
+      
+      // الحصول على الرابط العام للصورة
+      const { data: urlData } = supabase.storage
+        .from('qr-codes')
+        .getPublicUrl(fileName);
+      
+      qrImageUrl = urlData.publicUrl;
+    }
+    
+    await run('INSERT INTO customers (name, phone, qr_image) VALUES ($1, $2, $3)', [name, phone || '', qrImageUrl]);
     const customer = await query('SELECT * FROM customers ORDER BY id DESC LIMIT 1');
     res.json(customer[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -79,14 +107,79 @@ router.put('/customers/:id', async (req, res) => {
 
 router.delete('/customers/:id', async (req, res) => {
   try {
+    // حذف الصورة من Storage قبل حذف الزبون
+    const customer = await query('SELECT qr_image FROM customers WHERE id = $1', [req.params.id]);
+    if (customer[0]?.qr_image) {
+      const fileName = customer[0].qr_image.split('/').pop();
+      await supabase.storage.from('qr-codes').remove([fileName]);
+    }
+    
     await run('DELETE FROM subscriptions WHERE customer_id = $1', [req.params.id]);
     await run('DELETE FROM customers WHERE id = $1', [req.params.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 1. مسار تفاصيل الزبون
+router.get('/customers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerRows = await query('SELECT * FROM customers WHERE id = $1', [id]);
+    if (customerRows.length === 0) return res.status(404).json({ error: 'الزبون غير موجود' });
+    const customer = customerRows[0];
+
+    const subs = await query('SELECT * FROM subscriptions WHERE customer_id = $1 ORDER BY created_at DESC', [id]);
+    const latestSub = subs[0] || null;
+    
+    let timeInfo = null;
+    if (latestSub && latestSub.end_date) {
+      const diffMs = new Date(latestSub.end_date) - new Date();
+      if (diffMs <= 0) {
+        timeInfo = { expired: true, expiredDays: Math.abs(Math.floor(diffMs / 86400000)) };
+      } else {
+        timeInfo = { expired: false, days: Math.floor(diffMs / 86400000) };
+      }
+    }
+
+    res.json({
+      ...customer,
+      subscriptions: subs,
+      latestSub: latestSub,
+      total_subs: subs.length,
+      timeInfo: timeInfo
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 2. مسار تحديث صورة QR
+router.put('/customers/:id/qr', upload.single('qr_image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'لم يتم رفع صورة' });
+    
+    const ext = path.extname(req.file.originalname);
+    const fileName = `qr_${Date.now()}${ext}`;
+    
+    const { data, error } = await supabase.storage
+      .from('qr-codes')
+      .upload(fileName, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false
+      });
+    
+    if (error) return res.status(500).json({ error: 'فشل رفع الصورة' });
+    
+    const { data: urlData } = supabase.storage
+      .from('qr-codes')
+      .getPublicUrl(fileName);
+    
+    const qrImageUrl = urlData.publicUrl;
+    await run('UPDATE customers SET qr_image = $1 WHERE id = $2', [qrImageUrl, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ----------------------------------------------------
-// قسم الاشتراكات - معالجة صارمة للنصوص الفارغة للتواريخ 🔄
+// قسم الاشتراكات
 // ----------------------------------------------------
 router.post('/subscriptions', async (req, res) => {
   try {
@@ -97,7 +190,6 @@ router.post('/subscriptions', async (req, res) => {
     const price = parseInt(settings[`price_${plan}`] || (plan==='monthly'?25000:plan==='3months'?60000:plan==='6months'?110000:200000));
     const cost = parseInt(settings[`cost_${plan}`] || (plan==='monthly'?20000:plan==='3months'?50000:plan==='6months'?90000:160000));
     
-    // حماية صارمة: إذا كان التاريخ نصاً فارغاً أو غير معرف، يتم إجبار السيرفر على تاريخ اليوم فوراً
     const startD = (start_date && start_date.trim() !== "") ? start_date : new Date().toISOString().split('T')[0];
     const endD = addDays(startD, PLAN_DAYS[plan] || 30);
 
@@ -112,7 +204,7 @@ router.post('/subscriptions', async (req, res) => {
 });
 
 // ----------------------------------------------------
-// قسم الإحصائيات المتوافق والمعدل لـ Postgres السحابي 📊
+// قسم الإحصائيات
 // ----------------------------------------------------
 router.get('/stats', async (req, res) => {
   try {
@@ -158,52 +250,6 @@ router.get('/stats/monthly/:yearMonth', async (req, res) => {
   } catch (err) { res.json({ revenue: 0, debt: 0, count: 0, totalPrice: 0, byPlan: [] }); }
 });
 
-router.get('/recharges', async (req, res) => {
-  const rows = await query(`SELECT * FROM recharges ORDER BY created_at DESC`);
-  res.json(rows);
-});
-// 1. المسار المفقود لتشغيل (نافذة تفاصيل الزبون + أزرار التعديل والواتساب)
-router.get('/customers/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const customerRows = await query('SELECT * FROM customers WHERE id = $1', [id]);
-    if (customerRows.length === 0) return res.status(404).json({ error: 'الزبون غير موجود' });
-    const customer = customerRows[0];
-
-    const subs = await query('SELECT * FROM subscriptions WHERE customer_id = $1 ORDER BY created_at DESC', [id]);
-    const latestSub = subs[0] || null;
-    
-    let timeInfo = null;
-    if (latestSub && latestSub.end_date) {
-      const diffMs = new Date(latestSub.end_date) - new Date();
-      if (diffMs <= 0) {
-        timeInfo = { expired: true, expiredDays: Math.abs(Math.floor(diffMs / 86400000)) };
-      } else {
-        timeInfo = { expired: false, days: Math.floor(diffMs / 86400000) };
-      }
-    }
-
-    res.json({
-      ...customer,
-      subscriptions: subs,
-      latestSub: latestSub,
-      total_subs: subs.length,
-      timeInfo: timeInfo
-    });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// 2. المسار المفقود لتحديث صورة الـ QR للزبون عند التعديل
-router.put('/customers/:id/qr', upload.single('qr_image'), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'لم يتم رفع صورة' });
-    const qrImage = `/uploads/${req.file.filename}`;
-    await run('UPDATE customers SET qr_image = $1 WHERE id = $2', [qrImage, req.params.id]);
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// 3. المسار المفقود لتشغيل (نافذة عرض زبائن باقة معينة داخل الإحصائيات)
 router.get('/stats/monthly/:yearMonth/plan/:plan', async (req, res) => {
   try {
     const { yearMonth, plan } = req.params;
@@ -226,6 +272,15 @@ router.get('/stats/monthly/:yearMonth/plan/:plan', async (req, res) => {
     res.json(rows);
   } catch (err) { res.status(500).json([]); }
 });
+
+// ----------------------------------------------------
+// قسم شحنات الرصيد
+// ----------------------------------------------------
+router.get('/recharges', async (req, res) => {
+  const rows = await query(`SELECT * FROM recharges ORDER BY created_at DESC`);
+  res.json(rows);
+});
+
 router.post('/recharges', async (req, res) => {
   await run(`INSERT INTO recharges (amount) VALUES ($1)`, [parseInt(req.body.amount)]);
   res.json({ ok: true });
