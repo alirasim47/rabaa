@@ -202,7 +202,40 @@ router.post('/subscriptions', async (req, res) => {
     res.json(sub[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ----------------------------------------------------
+// تعديل الاشتراك
+// ----------------------------------------------------
+router.put('/subscriptions/:id', async (req, res) => {
+  try {
+    const { plan, paid, start_date } = req.body;
+    const settingsRows = await query('SELECT * FROM settings');
+    const settings = {}; settingsRows.forEach(r => (settings[r.key] = r.value));
 
+    const price = parseInt(settings[`price_${plan}`] || (plan==='monthly'?25000:plan==='3months'?60000:plan==='6months'?110000:200000));
+    const cost = parseInt(settings[`cost_${plan}`] || (plan==='monthly'?20000:plan==='3months'?50000:plan==='6months'?90000:160000));
+
+    const endD = addDays(start_date, PLAN_DAYS[plan] || 30);
+
+    await run('UPDATE subscriptions SET plan = $1, price = $2, cost = $3, paid = $4, start_date = $5, end_date = $6 WHERE id = $7',
+      [plan, price, cost, parseInt(paid)||0, start_date, endD, req.params.id]);
+
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ----------------------------------------------------
+// حذف الاشتراك
+// ----------------------------------------------------
+router.delete('/subscriptions/:id', async (req, res) => {
+  try {
+    await run('DELETE FROM subscriptions WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 // ----------------------------------------------------
 // قسم الإحصائيات
 // ----------------------------------------------------
